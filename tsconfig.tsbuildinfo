@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/web-distribution.auto.ts","./esbuild.ts"],"version":"6.0.2"}
+{"root":["./src/webgenerated.ts","./src/index.ts","./esbuild.ts"],"version":"6.0.2"}

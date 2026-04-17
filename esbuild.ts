@@ -4,7 +4,7 @@ import path from "path"
 
 const panelConfig = {
     in: "./Web/dist",
-    out: "./src/web-distribution.auto.ts"
+    out: "./Generated/web-distribution.auto.ts"
 };
 
 const config: import("esbuild").BuildOptions = {

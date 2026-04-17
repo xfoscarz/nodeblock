@@ -2,7 +2,7 @@
 dist/*
 
 # codebase
-.auto.ts
+Generated
 node_modules
 
 # macOS

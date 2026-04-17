@@ -18,10 +18,15 @@
         "incremental": false,
         "composite": false,
 
-        "types": [ "node" ]
+        "types": [ "node" ],
+
+        "paths": {
+            "@generated/*": [ "./Generated/*" ]
+        }
     },
     "include": [
         "./src/**/*",
+        "./Generated/**/*",
         "esbuild.ts"
     ]
 }

@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "noEmit": true,
+        
+        "lib": ["es2025"],
+        "target": "es2025",
+
+        "strict": true,
+        "alwaysStrict": true,
+
+        "noImplicitAny": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+
+        "skipLibCheck": true,
+
+        "incremental": false,
+        "composite": false,
+
+        "types": [ "node" ]
+    },
+    "include": [
+        "./src/**/*",
+        "esbuild.ts"
+    ]
+}

@@ -1,0 +1,12 @@
+# distributions
+dist/*
+
+# codebase
+.auto.ts
+node_modules
+
+# macOS
+.DS_Store
+
+# tests
+test

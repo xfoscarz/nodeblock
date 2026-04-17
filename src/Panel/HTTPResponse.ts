@@ -32,7 +32,7 @@ export default class HTTPResponse {
     }
 
     public get body() {
-        return this._body;
+        return this._body || Buffer.from("");
     }
 
     public set body(data: Buffer | string) {

@@ -4,7 +4,7 @@ import path from "path"
 
 const panelConfig = {
     in: "./Web/dist",
-    out: "./src/Panel/DistributionFiles.auto.ts"
+    out: "./Generated/web-distribution.auto.ts"
 };
 
 const config: import("esbuild").BuildOptions = {
@@ -63,6 +63,7 @@ async function transform(inFolder: string) {
     return indexFiles;
 }
 
+fs.mkdirSync(path.dirname(panelConfig.out), { recursive: true });
 fs.writeFileSync(panelConfig.out, "");
 
 writeToPanelOut("// Auto-generated: Do not modify\n");

@@ -1,8 +1,8 @@
 # distributions
 dist/*
+Generated
 
 # codebase
-.auto.ts
 node_modules
 
 # macOS

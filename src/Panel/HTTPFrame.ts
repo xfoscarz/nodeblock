@@ -57,7 +57,7 @@ export default class HTTPFrame {
         const body = this._buffer.subarray(0, this._contentLength);
         this._buffer = this._buffer.subarray(this._contentLength);
 
-        this._requestBuffer.body = new Uint8Array(body);
+        this._requestBuffer.body = Uint8Array.from(body);
         this._contentLength = -1;
 
         this._handleRequest(this._requestBuffer, this.socket);

@@ -2,7 +2,7 @@ import { ClientboundPacket } from "../Packet";
 
 export default class PongResponsePacket extends ClientboundPacket {
     constructor(
-        public timestamp: number
+        public timestamp: bigint
     ) {
         super(0x1);
     }

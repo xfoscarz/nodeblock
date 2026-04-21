@@ -8,7 +8,7 @@ export namespace Play {
         switch (packetID) {
             case 0x1b: // KEEP_ALIVE
                 const keepAliveID = await reader.readNextLong();
-                return new ServerboundKeepAlivePlayPacket(Number(keepAliveID));
+                return new ServerboundKeepAlivePlayPacket(keepAliveID);
         }
         throw new TypeError("not working yet");
     }

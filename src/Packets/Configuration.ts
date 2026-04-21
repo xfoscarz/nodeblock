@@ -34,7 +34,7 @@ export namespace Configuration {
                 return new AcknowledgeFinishConfiguration();
             case 0x4: // SERVERBOUND_KEEP_ALIVE
                 const keepAliveID = await reader.readNextLong();
-                return new ServerboundKeepAliveConfigurationPacket(Number(keepAliveID));
+                return new ServerboundKeepAliveConfigurationPacket(keepAliveID);
         }
         throw new TypeError("Packet decode error");
     }

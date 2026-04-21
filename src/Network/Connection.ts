@@ -54,7 +54,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     private _bufferedReader: BufferedReader = new BufferedReader();
     private _ended: boolean = false;
     private _lastKeepaliveCheck: number = 0;
-    private _keepaliveID: number = 0;
+    private _keepaliveID: bigint = 0n;
 
     constructor(public readonly server: Server, socket: Socket) {
         super();
@@ -180,7 +180,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             };
             await this.send(new StatusResponsePacket(data));
         } else if (packet instanceof PingRequestPacket) {
-            const timestamp = Date.now();
+            const timestamp = BigInt(Date.now());
             await this.send(new PongResponsePacket(timestamp));
         }
     }
@@ -242,7 +242,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
     private _verifyKeepaliveResponse(packet: Packet) {
         let delta = 0;
-        let keepAliveID = 0;
+        let keepAliveID = 0n;
 
         switch (this._state) {
             case ConnectionState.CONFIGURATION:
@@ -259,12 +259,12 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         } else if (keepAliveID != this._keepaliveID) {
             this.disconnect("Keep Alive: Client-server mismatch");
         } else {
-            this._keepaliveID = 0;
+            this._keepaliveID = 0n;
         }
     }
 
     private _sendKeepalive() {
-        if (this._keepaliveID != 0) {
+        if (this._keepaliveID != 0n) {
             const delta = Date.now() - this._lastKeepaliveCheck
             
             if (delta >= Connection.KEEP_ALIVE_THRESHOLD) {
@@ -272,7 +272,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             }
         } else {
             this._lastKeepaliveCheck = Date.now();
-            this._keepaliveID = Date.now();
+            this._keepaliveID = BigInt(Date.now());
             
             switch (this._state) {
                 case ConnectionState.CONFIGURATION:

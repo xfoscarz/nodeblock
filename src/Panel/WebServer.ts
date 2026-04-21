@@ -83,7 +83,7 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         this._started = true;
 
         this.server.listen(port, () => {
-            info(`Web server started on ${port}`);
+            info(`Web server started on http://localhost:${port}`);
         });
     }
 

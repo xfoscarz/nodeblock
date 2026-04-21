@@ -46,10 +46,15 @@ async function transform(inFolder: string) {
         if (fs.statSync(childPath).isDirectory()) {
             indexFiles.push(...await transform(childPath));
         } else {
-            console.log(`    ${childPath}`);
-
             const data = fs.readFileSync(childPath, { "encoding": "base64" });
             let key = normalizePath(childPath).slice(prefix.length);
+            
+            const format = 40;
+            const line = [ childPath, `\x1b[0m-> \x1b[32m"${key}"\x1b[0m` ]
+            if (line[0].length > format) {
+                line[0] = "..." + childPath.slice(line[0].length - format + 3);
+            }
+            console.log(`\x1b[2m${line.join(" ".repeat(Math.max(0, format - line[0].length) + 1))}\x1b[0m`);
             
             if (child.toLowerCase() == "index.html") {
                 indexFiles.push(key);
@@ -63,17 +68,25 @@ async function transform(inFolder: string) {
     return indexFiles;
 }
 
-fs.mkdirSync(path.dirname(panelConfig.out), { recursive: true });
-fs.writeFileSync(panelConfig.out, "");
+async function build(doServer: boolean = true, doTransform: boolean = true) {
+    if (doTransform) {
+        fs.mkdirSync(path.dirname(panelConfig.out), { recursive: true });
+        fs.writeFileSync(panelConfig.out, "");
+        
+        writeToPanelOut("// Auto-generated: Do not modify\n");
+        writeToPanelOut("const _: Record<string, Buffer> = {\n");
 
-writeToPanelOut("// Auto-generated: Do not modify\n");
-writeToPanelOut("const _: Record<string, Buffer> = {\n");
+        console.log(`\x1b[32mTransforming ${panelConfig.in}\x1b[0m`);
+        await transform(panelConfig.in);
 
-console.log(`\x1b[32mTransforming ${panelConfig.in}\x1b[0m`);
-transform(panelConfig.in).then(indexFiles => {
-    writeToPanelOut("};\n");
-    writeToPanelOut("export default _;");
+        writeToPanelOut("};\n");
+        writeToPanelOut("export default _;");
+    }
 
-    console.log(`\x1b[32mRunning esbuild\x1b[0m`);
-    esbuild.buildSync(config);
-});
+    if (doServer) {
+        console.log(`\x1b[32mBuilding server with esbuild\x1b[0m`);
+        esbuild.buildSync(config);
+    }
+}
+
+build(!process.argv.includes("-s"), !process.argv.includes("-t"));

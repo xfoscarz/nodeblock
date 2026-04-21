@@ -16,7 +16,10 @@
   },
   "scripts": {
     "dev": "nodemon",
-    "build": "yarn --cwd Web build && tsc -b && ts-node esbuild.ts",
+    "web": "yarn --cwd Web dev",
+    "build:server": "tsc -b && ts-node esbuild.ts -t",
+    "build:transform": "ts-node esbuild.ts -s && tsc -b && ts-node esbuild.ts -t",
+    "build": "yarn --cwd Web build && yarn build:transform",
     "lint": "eslint",
     "setup": "yarn && yarn --cwd Web"
   },

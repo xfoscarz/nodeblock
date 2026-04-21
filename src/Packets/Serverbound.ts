@@ -27,7 +27,7 @@ export class StatusRequestPacket extends Packet {
 
 export class PingRequestPacket extends Packet {
     constructor(
-        public timestamp: number
+        public timestamp: bigint
     ) {
         super(0x1);
     }
@@ -59,7 +59,7 @@ export class ServerboundPluginMessagePacket extends Packet {
 
 export class ServerboundKeepAliveConfigurationPacket extends Packet {
     constructor(
-        public keepAliveID: number
+        public keepAliveID: bigint
     ) {
         super(0x4);
     }
@@ -112,7 +112,7 @@ export class AcknowledgeFinishConfiguration extends Packet {
 
 export class ServerboundKeepAlivePlayPacket extends Packet {
     constructor(
-        public keepAliveID: number
+        public keepAliveID: bigint
     ) {
         super(0x1b);
     }

@@ -35,12 +35,8 @@ export default class HTTPResponse {
         return this._body || Buffer.from("");
     }
 
-    public set body(data: Buffer | string) {
-        if (typeof data === "string") {
-            this._body = Buffer.from(data);
-        } else {
-            this._body = data;
-        }
+    public set body(data: Uint8Array | string) {
+        this._body = Buffer.from(data);
     }
 
     public set contentType(type: MIMETypes | (string & {})) {
@@ -51,7 +47,7 @@ export default class HTTPResponse {
         return this.headers["Content-Type"];
     }
 
-    public get payload(): Buffer {
+    public get payload(): Uint8Array {
         const body = typeof this.body === "string" ? Buffer.from(this.body, "utf8") : this.body;
 
         let header = `${this.protocol} ${this.status} ${this.reasonPhrase}\n`;

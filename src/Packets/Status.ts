@@ -9,7 +9,7 @@ export namespace Status {
                 return new StatusRequestPacket();
             case 0x1: // PING_REQUEST
                 const timestamp = await reader.readNextLong();
-                return new PingRequestPacket(Number(timestamp));
+                return new PingRequestPacket(timestamp);
         }
 
         throw new TypeError("Packet decode error. State: Status");

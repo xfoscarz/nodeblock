@@ -1,4 +1,4 @@
-export function createNumber(chunk: Iterable<number>, msb: boolean = false): bigint {
+export function bigEndian(chunk: Iterable<number>, msb: boolean = false): bigint {
     const size = msb ? 7n : 8n;
     let value = 0n;
 

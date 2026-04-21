@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:stream";
 import nbt, { NBT, NBTFormat } from "prismarine-nbt";
 import { Identifier } from "./Minecraft/identifier";
-import { createNumber } from "./Util";
+import { bigEndian } from "./Util";
 import UUID from "./Minecraft/uuid";
 import GameProfile from "./Minecraft/gameProfile";
 
@@ -16,7 +16,7 @@ export class BufferedReader {
         }
     }
 
-    public write(data: Buffer) {
+    public write(data: Uint8Array) {
         for (const byte of data) {
             this._buffer.push(byte);
         }
@@ -92,12 +92,12 @@ export class BufferedReader {
 
     public async readNextVarInt(): Promise<number> {
         const bytes = await this.waitForMSBBytes();
-        return Number(createNumber(bytes, true));
+        return Number(bigEndian(bytes, true));
     }
 
-    public async readNextVarLong(): Promise<number> {
+    public async readNextVarLong(): Promise<bigint> {
         const bytes = await this.waitForMSBBytes();
-        return Number(createNumber(bytes, true));
+        return bigEndian(bytes, true);
     }
 
     // TODO
@@ -154,13 +154,13 @@ export class BufferedReader {
 
     public async readNextUnsigned(size: number): Promise<bigint> {
         const bytes = await this.waitForBytes(size);
-        return createNumber(bytes);
+        return bigEndian(bytes);
     }
 
     public async readNextSigned(size: number): Promise<bigint> {
         const bytes = await this.waitForBytes(size);
         const compliment = BigInt(bytes[0] >> 7) * (1n << (BigInt(size) * 8n));
-        return createNumber(bytes) - compliment;
+        return bigEndian(bytes) - compliment;
     }
 
     public async waitForMSBBytes(): Promise<Uint8Array> {

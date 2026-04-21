@@ -1,5 +1,5 @@
 {
     "ext": "ts,tsx",
-    "exec": "yarn build && cd dist && node --enable-source-maps index.js",
+    "exec": "yarn build:server && cd dist && node --enable-source-maps index.js",
     "ignore": [ "*.auto.ts" ]
 }

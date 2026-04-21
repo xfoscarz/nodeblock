@@ -2,7 +2,7 @@ import { ClientboundPacket } from "../Packet";
 
 export default class ClientboundKeepAliveConfigurationPacket extends ClientboundPacket {
     constructor(
-        public keepAliveID: number
+        public keepAliveID: bigint
     ) {
         super(0x4);
     }

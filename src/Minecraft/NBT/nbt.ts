@@ -36,14 +36,14 @@ export namespace NBT {
     type NBTNum = NBTByte | NBTShort | NBTInt | NBTLong | NBTFloat | NBTDouble;
     type NBTSmallNum = Exclude<NBTNum, NBTLong>;
 
-    export type NBTByteArray =      [ NBTTypes.BYTE_ARRAY, Uint8Array ];
+    export type NBTByteArray =      [ NBTTypes.BYTE_ARRAY, Int8Array ];
     export type NBTString =         [ NBTTypes.STRING,     string ];
     export type NBTList
         <T extends NBT = any> =     [ NBTTypes.LIST,       T[1][], T[0] ];
     export type NBTCompound =       [ NBTTypes.COMPOUND,   CompoundObject ];
 
-    export type NBTIntArray =       [ NBTTypes.INT_ARRAY,  Uint32Array ];
-    export type NBTLongArray =      [ NBTTypes.LONG_ARRAY, BigUint64Array ];
+    export type NBTIntArray =       [ NBTTypes.INT_ARRAY,  Int32Array ];
+    export type NBTLongArray =      [ NBTTypes.LONG_ARRAY, BigInt64Array ];
     type NBTNumArray = NBTByteArray | NBTIntArray | NBTLongArray;
 
 
@@ -53,9 +53,9 @@ export namespace NBT {
     }
 
     function numArray<T extends NBTNumArray[0]>(type: T, ArrayConstructor: (new( arg: any ) => any)) {
-        return (value: Iterable<bigint> | Iterable<number> = []): Item<NBTLongArray> => {
+        return (value: Iterable<bigint> | Iterable<number> = []): Item<NBTNumArray> => {
             const bigInt = ArrayConstructor === BigInt64Array;
-            let buffer: Uint8Array | BigInt64Array;
+            let buffer: Int8Array | BigInt64Array;
             if ("length" in value) {
                 buffer = new ArrayConstructor(value.length as number);
                 let i = 0;
@@ -73,7 +73,7 @@ export namespace NBT {
                 }
                 buffer = new ArrayConstructor(data);
             }
-            return new Item([ NBTTypes.LONG_ARRAY, buffer as any ]);
+            return new Item([ type as any, buffer as any ]);
         }
     }
 
@@ -91,20 +91,20 @@ export namespace NBT {
     type NBTOf<T extends NBTTypes> = NBTByType<T>;
     type ValueOf<T extends NBTTypes> = NBTByType<T>[1];
     
-    export function list<T extends ListableTypes>(
-        values: Item<NBTOf<T>>[],
+    export function list<T extends NBTTypes>(
+        values?: Item<NBTOf<T>>[],
         type?: T,
         name?: string,
     ): Item<NBTList<NBTOf<T>>>;
 
-    export function list<T extends ListableTypes>(
-        values: ValueOf<T>[],
-        type: T,
+    export function list<T extends NBTTypes>(
+        values?: ValueOf<T>[],
+        type?: T,
         name?: string,
     ): Item<NBTList<NBTOf<T>>>;
 
-    export function list<T extends ListableTypes>(
-        values: Item<NBTOf<T>>[] | ValueOf<T>[],
+    export function list<T extends NBTTypes>(
+        values: Item<NBTOf<T>>[] | ValueOf<T>[] = [],
         type?: T,
         name: string = "",
     ): Item<NBTList<NBTOf<T>>> {
@@ -117,11 +117,14 @@ export namespace NBT {
 
         if (values[0] instanceof Item) {
             listType = values[0].type as T;
-            return new Item([
-                NBTTypes.LIST,
-                values.map(v => (v as Item<NBTOf<T>>).value) as ValueOf<T>[],
-                listType
-            ] as NBTList<NBTOf<T>>, name);
+
+            if (values[0].type != NBTTypes.LIST && values[0].type != NBTTypes.COMPOUND) {
+                return new Item([
+                    NBTTypes.LIST,
+                    values.map(v => (v as Item<NBTOf<T>>).value) as ValueOf<T>[],
+                    listType
+                ] as NBTList<NBTOf<T>>, name);
+            }
         }
 
         listType = type || NBTTypes.END as T;
@@ -134,7 +137,7 @@ export namespace NBT {
     }
     export const compound = (value: CompoundObject = {}, name: string = ""): Item<NBTCompound> => {
         for (const name in value) {
-            (value[name] as any)._name = name;
+            (value[name] as any)._n = name;
         }
         return new Item([ NBTTypes.COMPOUND, value ], name);
     }
@@ -143,18 +146,18 @@ export namespace NBT {
     export const longArray = numArray(NBTTypes.LONG_ARRAY, BigInt64Array);
 
     class Item<T extends NBT = NBT> {
-        private _name: string | null = null;
-        private _data: T;
+        private _n: string | null = null;
+        private _d: T;
         
         constructor(data: T, name: string = "") {
-            this._name = name;
-            this._data = data;
+            this._n = name;
+            this._d = data;
         }
 
-        public get name(): string { return this._name || ""; }
+        public get name(): string { return this._n || ""; }
 
-        public get type(): T[0] { return this._data[0]; }
-        public get value(): T[1] {  return this._data[1]; }
+        public get type(): T[0] { return this._d[0]; }
+        public get value(): T[1] { return this._d[1]; }
 
         public getBytes(network: false): Uint8Array;
         public getBytes(name: string): Uint8Array;
@@ -171,24 +174,46 @@ export namespace NBT {
 
             switch (this.type) {
                 case NBTTypes.BYTE:
+                case NBTTypes.SHORT:
                 case NBTTypes.INT:
                 case NBTTypes.LONG:
                 case NBTTypes.FLOAT:
                 case NBTTypes.DOUBLE:
-                case NBTTypes.SHORT: {
+                case NBTTypes.STRING: {
                     obj = this.value;
                     break;
                 }
-                case NBTTypes.BYTE_ARRAY: {
-                    const data = (this.value)
-                }
-                case NBTTypes.STRING: {
-                    break;
-                }
+                
+                case NBTTypes.BYTE_ARRAY:
                 case NBTTypes.INT_ARRAY:
+                case NBTTypes.LONG_ARRAY: {
+                    const data = this.value as NBTByteArray[1];
+                    obj = Array.from(data);
                     break;
-                case NBTTypes.LONG_ARRAY:
+                }
+
+                case NBTTypes.LIST: {
+                    const list = this.value as Item[];
+                    if (list.length === 0) {
+                        obj = [];
+                    } else {
+                        if ((list[0].type == NBTTypes.LIST) || (list[0].type == NBTTypes.COMPOUND)) {
+                            obj = list.map(list => list.toJSON());
+                        } else {
+                            obj = list;
+                        }
+                    }
                     break;
+                }
+                case NBTTypes.COMPOUND: {
+                    const data: Record<string, any> = {};
+                    const compoundData = this.value as CompoundObject;
+                    for (const name in compoundData) {
+                        data[name] = compoundData[name].toJSON();
+                    }
+                    obj = data;
+                    break;
+                }
             }
 
             return obj;
@@ -204,7 +229,6 @@ export namespace NBT {
         private _list: Item[] = [];
         private _lengthRemain: number = -1;
         private _listType!: ListableTypes;
-        private _readEndTag: boolean = false;
 
         constructor(
             private readonly _reader: Reader,
@@ -228,7 +252,6 @@ export namespace NBT {
             } else {
                 const end = this._reader.peek(1)[0] == NBTTypes.END;
                 if (end) {
-                    this._readEndTag = true;
                     this._reader.readBytes(1);
                     return true;
                 } else {
@@ -260,12 +283,21 @@ export namespace NBT {
             }
             
             if (isFrameType) {
+                if (Reader.DEBUG) console.log(`${this._tab}${type == NBTTypes.COMPOUND ? "compound" : "list"} ${name}`);
                 this._reader.addFrame(type, name);
                 return;
             }
 
             const item = this._reader.readItem(type as ListableTypes);
             this.addItem(item, name);
+
+            if (Reader.DEBUG) {
+                if (this.isList) {
+                    console.log(`${this._tab}list-item`, item.value);
+                } else {
+                    console.log(`${this._tab}${name} =`, item.value);
+                }
+            }
         }
 
         public readNextType(): NBTTypes {
@@ -278,7 +310,7 @@ export namespace NBT {
 
         public get item(): Item<NBTCompound> | Item<NBTList<any>> {
             if (this.isList) {
-                return NBT.list(this._list as NBTList);
+                return NBT.list(this._list as NBTList, this._listType, this.name);
             } else {
                 return NBT.compound(this._obj, this.name);
             }
@@ -286,9 +318,12 @@ export namespace NBT {
     }
 
     class Reader {
+        public static DEBUG: boolean = false;
+
         private _frames: Frame[] = [];
         private _bytesLeft = 0;
         private _offset = 0;
+        private _result: Item<NBTCompound> | null = null;
 
         constructor(
             private _data: Uint8Array,
@@ -331,7 +366,7 @@ export namespace NBT {
 
         private _setOffset(value: number) {
             this._offset = value;
-            this._bytesLeft = this._data.byteLength - this._offset - 1;
+            this._bytesLeft = this._data.byteLength - this._offset;
         }
 
         public readItem(type: ListableTypes): Item {
@@ -362,7 +397,7 @@ export namespace NBT {
                 }
                 case NBTTypes.BYTE_ARRAY: {
                     const length = this.readBytes(4).readInt32BE();
-                    const buffer = new Uint8Array(length);
+                    const buffer = new Int8Array(length);
                     for (let i = 0; i < length; i++) {
                         buffer[i] = this.readBytes(1).readInt8();
                     }
@@ -372,10 +407,22 @@ export namespace NBT {
                     const value = this.readString();
                     return NBT.string(value);
                 }
-                case NBTTypes.INT_ARRAY:
-                    break;
-                case NBTTypes.LONG_ARRAY:
-                    break;
+                case NBTTypes.INT_ARRAY: {
+                    const length = this.readBytes(4).readInt32BE();
+                    const buffer = new Int32Array();
+                    for (let i = 0; i < length; i++) {
+                        buffer[i] = this.readBytes(4).readInt32BE();
+                    }
+                    return NBT.intArray(buffer);
+                }
+                case NBTTypes.LONG_ARRAY: {
+                    const length = this.readBytes(4).readInt32BE();
+                    const buffer = new BigInt64Array();
+                    for (let i = 0; i < length; i++) {
+                        buffer[i] = this.readBytes(8).readBigInt64BE();
+                    }
+                    return NBT.longArray(buffer);
+                }
             }
             throw new Error(`Malformed nbt. Unknown tag id ${type}.`);
         }
@@ -391,13 +438,30 @@ export namespace NBT {
                 type = this.readBytes(1)[0];
 
                 if (type == NBTTypes.COMPOUND) {
-                    this.addFrame(type, this.network ? "" : this.readString());
+                    const name = this.network ? "" : this.readString();
+                    this.addFrame(type, name);
+
+                    if (Reader.DEBUG) {
+                        console.log(`root${name}`);
+                    }
                 } else {
                     throw new Error("Malformed nbt. Expected root tag type to be TAG_Compound.");
                 }
-            } else if (this._frame.ended) {
+                return;
+            }
+            
+            if (this._frame.ended) {
                 const item = this._pop();
-                this._frame.addItem(item, item.name);
+
+                if (this._frames.length === 0) {
+                    this._result = item as Item<NBTCompound>;
+
+                    if (Reader.DEBUG) console.log("end root");
+                } else {
+                    this._frame.addItem(item, item.name);
+
+                    if (Reader.DEBUG) console.log(`${this.debugTab}end ${item.name}`);
+                }
                 return;
             }
 
@@ -409,11 +473,15 @@ export namespace NBT {
             this._data = await Compression.unzipIfNeeded(this._data);
             this._setOffset(0);
             
-            while (this._bytesLeft > 0) {
+            while (this._bytesLeft > 0 && this._result === null) {
                 this._next();
             }
 
-            return this._frames.shift()!.item as Item<NBTCompound>;
+            if (this._result === null) {
+                throw new Error("Malformed NBT. Failed to parse root compound.");
+            }
+
+            return this._result;
         }   
     }
 }

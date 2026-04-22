@@ -1,0 +1,6 @@
+{
+    "folders": [
+        { "name": "Root", "path": "." },
+        { "name": "Web", "path": "./Web" }
+    ]
+}

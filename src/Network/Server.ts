@@ -29,7 +29,8 @@ export default class Server {
     public readonly mode: ServerMode;
     public readonly minecraftVersions: number[];
     public readonly web: number;
-
+    
+    public connections: Connection[] = [];
     public maxPlayers: number;
     public motd: { centered: boolean, text: string };
     public softwareName: string;
@@ -37,7 +38,6 @@ export default class Server {
 
     private _started: boolean = false;
     private _web: WebServer = new WebServer();
-    private _connections: Connection[] = [];
 
     constructor(options: ServerOptions) {
         this.port = options.port || 25565;
@@ -54,7 +54,7 @@ export default class Server {
 
         this.server = new net.Server();
 
-        this.server.on("connection", socket => this._connections.push(new Connection(this, socket)));
+        this.server.on("connection", socket => this.connections.push(new Connection(this, socket)));
         
         setInterval(() => {
             this._cleanupConnections();
@@ -62,9 +62,9 @@ export default class Server {
     }
 
     private _cleanupConnections() {
-        const length = this._connections.length;
-        this._connections = this._connections.filter(connection => !connection.ended);
-        const difference = length - this._connections.length;
+        const length = this.connections.length;
+        this.connections = this.connections.filter(connection => !connection.ended);
+        const difference = length - this.connections.length;
 
         if (difference > 0) {
             info(`Cleaned up ${difference} stale connections.`);

@@ -1,6 +1,5 @@
-import { TextComponentNBT } from "../../Minecraft/NBT/textComponent";
+import { NBT } from "../../Minecraft/NBT/nbt";
 import { ClientboundPacket } from "../Packet";
-import nbt from "prismarine-nbt";
 
 export default class DisconnectConfigurationPacket extends ClientboundPacket {
     constructor(
@@ -10,9 +9,9 @@ export default class DisconnectConfigurationPacket extends ClientboundPacket {
     }
 
     public override write(): void {
-        const data = nbt.comp({
-            "text": nbt.string(this.reason),
-            "color": nbt.string("red")
+        const data = NBT.compound({
+            "text": NBT.string("red"),
+            "color": NBT.string("red")
         });
         this.writeNBT(data);
     }

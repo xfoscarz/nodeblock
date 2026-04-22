@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "prismarine-nbt": "^2.8.0",
     "ts-node": "^10.9.2",
     "uuid": "^13.0.0"
   },

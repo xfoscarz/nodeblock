@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:stream";
-import nbt, { NBT, NBTFormat } from "prismarine-nbt";
 import { Identifier } from "./Minecraft/identifier";
 import { bigEndian } from "./Util";
 import UUID from "./Minecraft/uuid";
 import GameProfile from "./Minecraft/gameProfile";
+import { NBT } from "./Minecraft/NBT/nbt";
 
 export class BufferedReader {
     private _buffer: number[] = [];
@@ -225,7 +225,7 @@ export class BufferedWriter {
     }
 
     public writeByte(value: number) {
-        this._buffer.push(value | 0b1111_1111);
+        this._buffer.push(value & 0b1111_1111);
     }
 
     public writeLong(value: bigint | number) {
@@ -255,13 +255,10 @@ export class BufferedWriter {
         return this;
     }
 
-    public writeNBT(value: any): this {
-        const buffer = nbt.writeUncompressed(value, "big");
-
-        // network nbt requires stripping root tag name
-        this._buffer.push(buffer.at(0)!); // root compound tag
-        this._buffer.push(...buffer.subarray(3)) // skip next two bytes (length of root name takes 2 bytes)
-
+    public writeNBT(value: NBT.Compound): this {
+        const array: number[] = [];
+        value.getBytes(true, { buffer: array, offset: 0 });
+        this._buffer = this._buffer.concat(array);
         return this;
     }
 

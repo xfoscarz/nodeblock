@@ -12,7 +12,7 @@ const config: import("esbuild").BuildOptions = {
     entryPoints: [ "src/index.ts" ],
     bundle: true,
     sourcemap: "linked",
-    minify: true,
+    minify: !process.argv.includes("-m"),
     outfile: "dist/index.js",
 
     // jsx
@@ -89,4 +89,7 @@ async function build(doServer: boolean = true, doTransform: boolean = true) {
     }
 }
 
-build(!process.argv.includes("-s"), !process.argv.includes("-t"));
+build(
+    !process.argv.includes("-s"),
+    !process.argv.includes("-t")
+);

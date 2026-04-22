@@ -28,12 +28,13 @@ import Client from "./Client";
 import Server, { ServerMode } from "./Server";
 
 interface ConnectionEvents {
-    "pluginmessage": [ Identifier, BufferedReader ];
     "login": [];
     "configuration": [];
     "serverlist": [];
-    "playstart": [];
+    "play": [];
     "playpacket": [ Packet ];
+    
+    "pluginmessage": [ Identifier, BufferedReader ];
 }
 
 export default class Connection extends EventEmitter<ConnectionEvents> {
@@ -55,6 +56,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     private _ended: boolean = false;
     private _lastKeepaliveCheck: number = 0;
     private _keepaliveID: bigint = 0n;
+
+    private _timeouts: Record<string, NodeJS.Timeout> = {};
 
     constructor(public readonly server: Server, socket: Socket) {
         super();
@@ -88,6 +91,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
         this._socket.on("close", () => {
             this._ended = true;
+            info(`Connection { ${this.uuid} } closed`);
         });
     }
 
@@ -99,7 +103,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         const packetID = await reader.readNextVarInt();
 
         HTMLLogger.completePacket(size, packetID, reader.buffer);
-        if (packetID != 0x1b) printBuffer(reader.buffer, `[Packet #0x${packetID} ${size}b]: `);
+        if (packetID != 0x1b) printBuffer(reader.buffer, `[${this._state} Packet #0x${packetID} ${size}b]: `);
 
         let packet;
 
@@ -204,7 +208,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             }
 
             this._initializeEventListeners();
-            this._sendKeepalive();
+
+            this._timeouts["keep-alive"] = setTimeout(() => this._sendKeepalive(), 5 * 1000);
 
             await this._configureClient();
         }
@@ -216,10 +221,16 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             this._client.chatMode = packet.chatMode;
             this._client.viewDistance = packet.viewDistance;
         } else if (packet instanceof ServerboundPluginMessagePacket) {
-            this.emit("pluginmessage", packet.channel, new BufferedReader(packet.data));
+            const reader = new BufferedReader(packet.data);
+            printBuffer(packet.data, `  Channel ${packet.channel} -> `);
+
+            if (packet.channel.equals(Identifier.ofVanilla("brand"))) {
+                this._client.brand = await reader.readNextString();
+            }
+            this.emit("pluginmessage", packet.channel, reader);
         } else if (packet instanceof AcknowledgeFinishConfiguration) {
             this._state = ConnectionState.PLAY;
-            this.emit("playstart");
+            this.emit("play");
         } else if (packet instanceof ServerboundKeepAliveConfigurationPacket) {
             this._verifyKeepaliveResponse(packet);
         }
@@ -229,6 +240,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         if (packet instanceof ServerboundKeepAlivePlayPacket) {
             this._verifyKeepaliveResponse(packet);
         }
+        
         this.emit("playpacket", packet);
     }
 
@@ -264,6 +276,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     }
 
     private _sendKeepalive() {
+        if (this._ended) return;
+
         if (this._keepaliveID != 0n) {
             const delta = Date.now() - this._lastKeepaliveCheck
             
@@ -284,7 +298,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             }
         }
 
-        setTimeout(this._sendKeepalive.bind(this), 5 * 1000);
+        this._timeouts["keep-alive"].refresh();
     }
 
     private async _configureClient() {
@@ -305,13 +319,6 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
 
     private _initializeEventListeners() {
-        this.on("pluginmessage", async (channel, reader) => {
-            printBuffer(reader.buffer, `  Channel ${channel} -> `);
-
-            if (channel.equals(Identifier.ofVanilla("brand"))) {
-                this._client.brand = await reader.readNextString();
-            }
-        });
     }
 
     public async send(packet: ClientboundPacket): Promise<void> {
@@ -341,6 +348,10 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         }
     }
 
+    private _clearAllTimeouts() {
+        Object.values(this._timeouts).forEach(clearTimeout);
+    }
+
     public get ended() {
         return this._ended;
     }
@@ -356,13 +367,15 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     public close() {
         this._ended = true;
         this._socket.end();
+        this.removeAllListeners();
+        this._clearAllTimeouts();
     }
 }
 
 export enum ConnectionState {
-    HANDSHAKING = 0,
-    STATUS = 1,
-    LOGIN = 2,
-    CONFIGURATION = 3,
-    PLAY = 4
+    HANDSHAKING = "Handshake",
+    STATUS = "Status",
+    LOGIN = "Login",
+    CONFIGURATION = "Config",
+    PLAY = "Play"
 }

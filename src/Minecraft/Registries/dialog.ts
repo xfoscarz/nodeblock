@@ -1,4 +1,5 @@
 import { ListOfAtLeastOne, StringContaining } from "../../Util";
+import { VanillaItems } from "../item";
 import { TextComponent } from "../textComponent";
 
 type DialogNBT = {
@@ -32,6 +33,9 @@ type DialogNBT = {
     exit_action: Dialog.LabeledAction;
     columns?: number;
     button_width?: number;
+} | {
+    type: string;
+    [key: string]: any;
 });
 
 namespace Dialog {
@@ -41,10 +45,10 @@ namespace Dialog {
         width?: number;
     } | {
         type: "minecraft:item";
-        item: string | {
-            id: string;
+        item: VanillaItems | {
+            id: VanillaItems;
             count?: number;
-            components?: []; // TODO ItemComponent s
+            components?: []; // TODO Item Component
         }
         description?: {
             contents: Exclude<TextComponent, TextComponent.NBT | TextComponent.Score | TextComponent.Selector>;

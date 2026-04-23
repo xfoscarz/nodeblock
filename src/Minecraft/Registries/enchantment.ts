@@ -1,11 +1,15 @@
+import { VanillaAttributes } from "../attribute";
+import { VanillaDamageTypes } from "../damageType";
+import { VanillaItems, VanillaItemTags } from "../item";
 import { Particle } from "../particle";
+import { VanillaSoundEvents } from "../sound";
 import { TextComponent } from "../textComponent"
 
 export type Enchantment = {
     description: TextComponent;
-    exclusive_set?: string | string[];
-    supported_items: string | string[];
-    primary_items?: string | string[];
+    exclusive_set?: string | string[]; // TODO enchantment identifier
+    supported_items: (VanillaItems | VanillaItems[] | VanillaItemTags)[];
+    primary_items?: (VanillaItems | VanillaItems[] | VanillaItemTags)[];
     weight: number;
     max_level: number;
     min_cost: {
@@ -29,55 +33,65 @@ namespace Enchantment {
 
     type ValueEffect = {
         type: "minecraft:set"
-        value: {} // TODO level value based
+        value: LevelBasedValue;
     } | {
         type: "minecraft:add"
-        value: {} // TODo level value based
+        value: LevelBasedValue;
     } | {
         type: "minecraft:multiply"
-        factor: {} // TODO level value based
+        factor: LevelBasedValue;
     } | {
         type: "minecraft:remove_binomial"
-        chance: {} // TODO level value based
+        chance: LevelBasedValue;
     } | {
         type: "minecraft:all_of";
         effects: (ValueEffect | LocationBasedEffect)[];
+    } | {
+        type: string;
+        [key: string]: any;
+    }
+
+    type AttributeEffect = {
+        attribute: VanillaAttributes;
+        amount: LevelBasedValue;
+        operation: "add_value" | "add_multiplied_base" | "add_multiplied_total";
+        id: string; // TODO resource location ???
     }
 
     type EntityEffect = {
         type: "minecraft:all_of";
-        effects: EntityEffect[];
+        effects: (EntityEffect | LocationBasedEffect)[];
     } | {
         type: "minecraft:apply_impulse";
         direction: [ number, number, number ];
         coordinate_scale: [ number, number, number ];
-        magnitude: {} // TODO
+        magnitude: LevelBasedValue;
     } | {
         type: "minecraft:apply_exhaustion";
-        amount: {} // TODO
+        amount: LevelBasedValue;
     } | {
         type: "minecraft:apply_mob_effect";
-        to_apply: string | string[];
-        min_duration: {} // TODO
-        max_duration: {} // TODO
-        min_amplifier: {} // TODO
-        max_amplifier: {} // TODO
+        to_apply: string | string[]; // TODO status effect id
+        min_duration: LevelBasedValue;
+        max_duration: LevelBasedValue;
+        min_amplifier: LevelBasedValue;
+        max_amplifier: LevelBasedValue;
     } | {
         type: "minecraft:damage_entity";
-        damage_type: string;
-        min_damage: {} // TODO
-        max_damage: {} // TODO
+        damage_type: VanillaDamageTypes;
+        min_damage: LevelBasedValue;
+        max_damage: LevelBasedValue;
     } | {
         type: "minecraft:change_item_damage";
-        amount: {} // TODO
+        amount: LevelBasedValue;
     } | {
         type: "minecraft:explode";
         attribute_to_user: boolean;
-        damage_type: string;
-        immune_blocks: string | string[];
-        knockback_multiplier?: {} // TODO
+        damage_type: VanillaDamageTypes;
+        immune_blocks: string | string[]; // TODO block id
+        knockback_multiplier?: LevelBasedValue;
         offset?: [ number, number, number ];
-        radius: {} // TODO
+        radius: LevelBasedValue;
         create_fire: boolean;
         block_interaction: "none" | "block" | "mob" | "tnt" | "trigger";
         small_particle: Particle;
@@ -88,32 +102,32 @@ namespace Enchantment {
             scaling: number;
             speed: number;
         }[];
-        sound: string;
+        sound: VanillaSoundEvents;
     } | {
         type: "minecraft:ignite";
-        duration: {} // TODO
+        duration: LevelBasedValue;
     } | {
         type: "minecraft:play_sound";
-        sound: (string | {
-            sound_id: string;
+        sound: (VanillaSoundEvents | {
+            sound_id: VanillaSoundEvents;
             range?: number;
         })[];
         volume: FloatProvider;
         pitch: FloatProvider;
     } | {
         type: "minecraft:replace_block";
-        block_state: {} // TODO
+        block_state: {} // TODO blockstate
         offset?: [ number, number, number ];
-        trigger_game_event?: string;
-        predicate?: {} // TODO
+        trigger_game_event?: string; // TODO game event
+        predicate?: {} // TODO block predicate
     } | {
         type: "minecraft:replace_disk";
-        block_state: {} // TODO
+        block_state: {} // TODO block state
         offset?: [ number, number, number ];
-        radius: {} // TODO
-        height: {} // TODO
-        trigger_game_event?: string;
-        predicate?: {} // TODO
+        radius: LevelBasedValue;
+        height: LevelBasedValue;
+        trigger_game_event?: string; // TODO game event
+        predicate?: {} // TODO block predicate
     } | {
         type: "minecraft:run_function";
         function: string;
@@ -121,7 +135,7 @@ namespace Enchantment {
         type: "minecraft:set_block_properties";
         offset?: [ number, number, number ];
         properties: {} // TODO blockstate key value pair
-        trigger_game_event?: string;
+        trigger_game_event?: string; // TODO game event
     } | {
         type: "minecraft:spawn_particles";
         particle: Particle;
@@ -154,21 +168,46 @@ namespace Enchantment {
         type: "minecraft:summon_entity";
         entity: string | string[];
         join_team: boolean;
+    } | {
+        type: string;
+        [key: string]: any;
     }
 
     type LocationBasedEffect = {
         type: "minecraft:attribute";
-        attribute: string;
-        amount: {} // TODO
+        attribute: VanillaAttributes;
+        amount: LevelBasedValue;
         operation: "add_value" | "add_multiplied_base" | "add_multiplied_total";
-        id: string;
-    }
-    
-    type AttributeEffectComponent = {
-        attribute: string;
-        amount: {} // TODO
-        operation: "add_value" | "add_multiplied_base" | "add_multiplied_total";
-        id: string;
+        id: string; // TODO resource location
+    } | EntityEffect;
+
+    type LevelBasedValue = number | {
+        type: "minecraft:exponent";
+        base: LevelBasedValue;
+        power: LevelBasedValue;
+    } | {
+        type: "minecraft:linear";
+        base: number;
+        per_level_above_first: number;
+    } | {
+        type: "minecraft:levels_squared";
+        added: number;
+    } | {
+        type: "minecraft:clamped";
+        value: LevelBasedValue;
+        min: number;
+        max: number;
+    } | {
+        type: "minecraft:fraction";
+        numerator: LevelBasedValue;
+        denominator: LevelBasedValue;
+    } | {
+        type: "minecraft:lookup";
+        values: number[];
+        fallback: LevelBasedValue;
+    } | {
+        type: string;
+        [key: string]: any;
     }
 
     export type EffectComponent = {
@@ -209,14 +248,39 @@ namespace Enchantment {
         "minecraft:prevent_equipment_drop"?: {};
         "minecraft:prevent_armor_change"?: {};
 
-        "minecraft:attributes"?: AttributeEffectComponent;
+        "minecraft:attributes"?: AttributeEffect;
 
-        "minecraft:crossbow_charging_sounds"?: ValueEffect[];
+        "minecraft:crossbow_charging_sounds"?: {
+            start?: VanillaSoundEvents;
+            mid?: VanillaSoundEvents;
+            end?: VanillaSoundEvents;
+        }[];
 
-        "minecraft:trident_sound"?: ValueEffect[];
+        "minecraft:trident_sound"?: VanillaSoundEvents[];
 
-        [componentID: string]: ValueEffect | any;
+        [componentID: string]: any;
     }
 
-    type FloatProvider = {};
+    type FloatProvider = {
+        type: "minecraft:constant";
+        value: number;
+    } | {
+        type: "minecraft:uniform";
+        min_inclusive: number;
+        max_exclusive: number;
+    } | {
+        type: "minecraft:clamped_normal";
+        mean: number;
+        deviation: number;
+        min: number;
+        max: number;
+    } | {
+        type: "minecraft:trapezoid";
+        min: number;
+        max: number;
+        plateau: number;
+    } | {
+        type: string;
+        [key: string]: any;
+    }
 }

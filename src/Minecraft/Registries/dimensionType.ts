@@ -1,3 +1,4 @@
+import * as Sound from "../sound";
 import { ListOfAtLeastOne } from "../../Util";
 import { Particle } from "../particle";
 import { TextComponent } from "../textComponent";
@@ -19,7 +20,7 @@ export type DimensionType = {
     cardinal_light?: "default" | "nether";
     attributes?: DimensionType.EnvironmentAttributes;
     default_clock?: string;
-    timelines?: string | string[];
+    timelines?: string | string[]; // TODO timeline
 }
 
 namespace DimensionType {
@@ -47,6 +48,9 @@ namespace DimensionType {
             data: IntProvider;
             weight: number;
         }>
+    } | {
+        type: string;
+        [key: string]: any;
     }
 
     export type EnvironmentAttributes = {
@@ -55,13 +59,13 @@ namespace DimensionType {
                 block_search_extent?: number;
                 offset?: number;
                 tick_delay?: number;
-                sound: SoundEvent;
+                sound: DimensionType.SoundEvent;
             };
             additions?: {
                 tick_chance?: number;
-                sound: SoundEvent;
+                sound: DimensionType.SoundEvent;
             };
-            loop?: SoundEvent;
+            loop?: DimensionType.SoundEvent;
         }>;
         "minecraft:audio/background_music"?: Modifier<{
             default?: DelayedSoundEvent;
@@ -70,7 +74,7 @@ namespace DimensionType {
         }>;
         "minecraft:audio/firefly_bush_sounds"?: Modifier.Boolean;
         "minecraft:audio/music_volume"?: Modifier.Float;
-        "minecraft:gameplay/baby_villager_activity"?: Modifier<VillagerAI>;
+        "minecraft:gameplay/baby_villager_activity"?: Modifier<VanillaVillagerAIs>;
         "minecraft:gameplay/bed_rule"?: Modifier<{
             can_sleep: "always" | "when_dark" | "never";
             can_set_spawn: "always" | "when_dark" | "never";
@@ -93,7 +97,7 @@ namespace DimensionType {
         "minecraft:gameplay/snow_golem_melts"?: Modifier.Boolean;
         "minecraft:gameplay/surface_slime_spawn_chance"?: Modifier.Float;
         "minecraft:gameplay/turtle_egg_hatch_chance"?: Modifier.Float;
-        "minecraft:gameplay/villager_activity"?: Modifier.Overridable<VillagerAI>;
+        "minecraft:gameplay/villager_activity"?: Modifier.Overridable<VanillaVillagerAIs>;
         "minecraft:gameplay/water_evaporates"?: Modifier.Boolean;
         "minecraft:visual/ambient_light_color"?: Modifier.RGB;
         "minecraft:visual/ambient_particles"?: Modifier.Overridable<{ particle: Particle; probability: number; }[]>;
@@ -123,7 +127,8 @@ namespace DimensionType {
         [environmentAttribute: string]: { modifier: string; argument: any; } | any;
     };
 
-    export type VillagerAI = "minecraft:core"
+    export type VanillaVillagerAIs = (string & {})
+        | "minecraft:core"
         | "minecraft:hide"
         | "minecraft:idle"
         | "minecraft:meet"
@@ -133,15 +138,15 @@ namespace DimensionType {
         | "minecraft:raid"
         | "minecraft:rest";
 
-    export type SoundEvent = string | {
-        sound_id: string;
+    export type SoundEvent = Sound.VanillaSoundEvents | {
+        sound_id: Sound.VanillaSoundEvents;
         range?: number;
     }
 
     export type DelayedSoundEvent = {
         max_delay: number;
         min_delay: number;
-        sound: SoundEvent;
+        sound: DimensionType.SoundEvent;
         replace_current_music?: boolean;
     }
 

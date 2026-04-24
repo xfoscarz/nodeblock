@@ -1,7 +1,7 @@
-import { NBT } from "../../Minecraft/NBT/nbt";
-import { ClientboundPacket } from "../Packet";
+import { NBT } from "@/Minecraft/NBT";
+import { ClientboundPacket } from "@/Network/Packet";
 
-export default class DisconnectPlayPacket extends ClientboundPacket {
+export default class ClientboundDisconnectPlayPacket extends ClientboundPacket {
     constructor(
         public reason: string
     ) {

@@ -1,4 +1,4 @@
-import { ClientboundPacket } from "../Packet";
+import { ClientboundPacket } from "@/Network/Packet";
 
 export type StatusResponseData = {
     version: {
@@ -20,7 +20,7 @@ export type StatusResponseData = {
     enforcesSecureChat?: boolean;
 };
 
-export default class StatusResponsePacket extends ClientboundPacket {
+export default class ClientboundStatusResponsePacket extends ClientboundPacket {
     public version: StatusResponseData["version"];
     public players: StatusResponseData["players"];
     public description: StatusResponseData["description"];

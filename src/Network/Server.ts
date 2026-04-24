@@ -1,9 +1,9 @@
-import net from "net";
-import { Identifier } from "../Minecraft/Identifier";
-import Connection from "./Connection";
-import { info } from "../Debug";
-import WebServer from "../WebPanel/WebServer";
-import { LegacyText } from "../Minecraft/Text";
+import { info } from "@/Debug";
+import { Identifier } from "@/Minecraft/Identifier";
+import { LegacyText } from "@/Minecraft/Text";
+import Connection from "@/Network/Connection";
+import WebServer from "@/WebPanel/WebServer";
+import net from "node:net"
 
 type ServerOptions = {
     port?: number;

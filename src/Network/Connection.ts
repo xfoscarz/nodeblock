@@ -1,38 +1,46 @@
+import { HTMLLogger, info, printBuffer } from "@/Debug";
+import GameProfile from "@/Minecraft/GameProfile";
+import { Identifier } from "@/Minecraft/Identifier";
+import { BufferedReader } from "@/Network/BufferedIO";
+import Client from "@/Network/Client";
+import { ClientboundPacket, ServerboundPacket } from "@/Network/Packet";
+import {
+    ClientboundDisconnectConfigurationPacket,
+    ClientboundDisconnectLoginPacket,
+    ClientboundDisconnectPlayPacket,
+    ClientboundFeatureFlagsPacket,
+    ClientboundFinishConfigurationPacket,
+    ClientboundKeepAliveConfigurationPacket,
+    ClientboundKeepAlivePlayPacket,
+    ClientboundLoginSuccessPacket,
+    ClientboundPongResponsePacket,
+    ServerboundAcknowledgeFinishConfigurationPacket,
+    ServerboundClientInformationPacket,
+    ServerboundHandshakePacket,
+    ServerboundKeepAliveConfigurationPacket,
+    ServerboundKeepAlivePlayPacket,
+    ServerboundLoginAcknowledgedPacket,
+    ServerboundLoginStartPacket,
+    ServerboundPingRequestPacket,
+    ServerboundPluginMessagePacket,
+    ServerboundStatusRequestPacket
+} from "@/Network/Packets.barrel";
+import { HandshakeIntent } from "@/Network/Packets/Serverbound/ServerboundHandshakePacket";
+import Server, { ServerMode } from "@/Network/Server";
+import { Configuration, Handshaking, Login, Play, Status } from "@/Network/States.barrel";
+import EventEmitter from "node:events";
 import { Socket } from "node:net";
-import { EventEmitter } from "node:stream";
 import { v4 } from "uuid";
-import { BufferedReader } from "../BufferedIO";
-import { Config } from "../Config";
-import { HTMLLogger, info, printBuffer } from "../Debug";
-import GameProfile from "../Minecraft/GameProfile";
-import { Identifier } from "../Minecraft/Identifier";
-import ClientboundKeepAliveConfigurationPacket from "../Packets/Clientbound/ClientboundKeepAliveConfigurationPacket";
-import ClientboundKeepAlivePlayPacket from "../Packets/Clientbound/ClientboundKeepAlivePlayPacket";
-import DisconnectConfigurationPacket from "../Packets/Clientbound/DisconnectConfigurationPacket";
-import DisconnectLoginPacket from "../Packets/Clientbound/DisconnectLoginPacket";
-import DisconnectPlayPacket from "../Packets/Clientbound/DisconnectPlayPacket";
-import FeatureFlagsPacket from "../Packets/Clientbound/FeatureFlagsPacket";
-import FinishConfigurationPacket from "../Packets/Clientbound/FinishConfigurationPacket";
-import LoginSuccessPacket from "../Packets/Clientbound/LoginSuccessPacket";
-import PongResponsePacket from "../Packets/Clientbound/PongResponsePacket";
-import StatusResponsePacket, { StatusResponseData } from "../Packets/Clientbound/StatusResponsePacket";
-import { Configuration } from "../Packets/Configuration";
-import { Handshaking } from "../Packets/Handshaking";
-import { Login } from "../Packets/Login";
-import { ClientboundPacket, Packet } from "../Packets/Packet";
-import { Play } from "../Packets/Play";
-import { AcknowledgeFinishConfiguration, ClientInformationPacket, HandshakeIntent, HandshakePacket, LoginAcknowledged, LoginStartPacket, PingRequestPacket, ServerboundKeepAliveConfigurationPacket, ServerboundKeepAlivePlayPacket, ServerboundPluginMessagePacket, StatusRequestPacket } from "../Packets/Serverbound";
-import { Status } from "../Packets/Status";
-import Client from "./Client";
-import Server, { ServerMode } from "./Server";
-import { LegacyText } from "../Minecraft/Text";
+import ClientboundStatusResponsePacket, { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
+import { ServerConfiguration } from "@/ServerConfiguration";
+import { LegacyText } from "@/Minecraft/Text";
 
 interface ConnectionEvents {
     "login": [];
     "configuration": [];
     "serverlist": [];
     "play": [];
-    "playpacket": [ Packet ];
+    "playpacket": [ ServerboundPacket ];
     
     "pluginmessage": [ Identifier, BufferedReader ];
 }
@@ -142,8 +150,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         this._finishPacket();
     }
 
-    private async _handleHandshake(packet: Packet) {
-        if (packet instanceof HandshakePacket) {
+    private async _handleHandshake(packet: ServerboundPacket) {
+        if (packet instanceof ServerboundHandshakePacket) {
             this._protocolVersion = packet.protocolVersion;
 
             switch (packet.intent) {
@@ -161,11 +169,11 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         }
     }
 
-    private async _handleStatus(packet: Packet) {
-        if (packet instanceof StatusRequestPacket) {
+    private async _handleStatus(packet: ServerboundPacket) {
+        if (packet instanceof ServerboundStatusRequestPacket) {
             const onlinePlayers = 0;
 
-            let base64Data = Config.getFile("server-icon.png");
+            let base64Data = ServerConfiguration.getFile("server-icon.png");
             let matchVersion = this.server.minecraftVersions.includes(this._protocolVersion);
 
             const data: StatusResponseData = {
@@ -182,23 +190,23 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 "enforcesSecureChat": false,
                 "favicon": base64Data.length != 0 ? Buffer.from(base64Data).toString("base64") : ""
             };
-            await this.send(new StatusResponsePacket(data));
-        } else if (packet instanceof PingRequestPacket) {
+            await this.send(new ClientboundStatusResponsePacket(data));
+        } else if (packet instanceof ServerboundPingRequestPacket) {
             const timestamp = BigInt(Date.now());
-            await this.send(new PongResponsePacket(timestamp));
+            await this.send(new ClientboundPongResponsePacket(timestamp));
         }
     }
 
-    private async _handleLogin(packet: Packet) {
-        if (packet instanceof LoginStartPacket) {
+    private async _handleLogin(packet: ServerboundPacket) {
+        if (packet instanceof ServerboundLoginStartPacket) {
             if (this.encrypted) {
                 this.disconnect("Encrypted servers are not supported yet.");
                 return;
             } else {
                 this._profile = await GameProfile.fromUsername(packet.name);
-                await this.send(new LoginSuccessPacket(this._profile));
+                await this.send(new ClientboundLoginSuccessPacket(this._profile));
             }
-        } else if (packet instanceof LoginAcknowledged) {
+        } else if (packet instanceof ServerboundLoginAcknowledgedPacket) {
             this._state = ConnectionState.CONFIGURATION;
             this.emit("configuration");
 
@@ -215,8 +223,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         }
     }
 
-    private async _handleConfiguration(packet: Packet) {
-        if (packet instanceof ClientInformationPacket) {
+    private async _handleConfiguration(packet: ServerboundPacket) {
+        if (packet instanceof ServerboundClientInformationPacket) {
             this._client.locale = packet.locale;
             this._client.chatMode = packet.chatMode;
             this._client.viewDistance = packet.viewDistance;
@@ -228,7 +236,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 this._client.brand = await reader.readNextString();
             }
             this.emit("pluginmessage", packet.channel, reader);
-        } else if (packet instanceof AcknowledgeFinishConfiguration) {
+        } else if (packet instanceof ServerboundAcknowledgeFinishConfigurationPacket) {
             this._state = ConnectionState.PLAY;
             this.emit("play");
         } else if (packet instanceof ServerboundKeepAliveConfigurationPacket) {
@@ -236,7 +244,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         }
     }
 
-    private async _handlePlay(packet: Packet) {
+    private async _handlePlay(packet: ServerboundPacket) {
         if (packet instanceof ServerboundKeepAlivePlayPacket) {
             this._verifyKeepaliveResponse(packet);
         }
@@ -252,7 +260,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         }
     }
 
-    private _verifyKeepaliveResponse(packet: Packet) {
+    private _verifyKeepaliveResponse(packet: ServerboundPacket) {
         let delta = 0;
         let keepAliveID = 0n;
 
@@ -306,11 +314,11 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         await this._updateTags();
         await this._synchronizeRegistries();
 
-        await this.send(new FinishConfigurationPacket());
+        await this.send(new ClientboundFinishConfigurationPacket());
     }
 
     private async _enableFeatures() {
-        await this.send(new FeatureFlagsPacket(this.server.featureFlags));
+        await this.send(new ClientboundFeatureFlagsPacket(this.server.featureFlags));
     }
 
     private async _updateTags() {}
@@ -337,13 +345,13 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 this.close();
                 break;
             case ConnectionState.LOGIN:
-                await this.send(new DisconnectLoginPacket(reason));
+                await this.send(new ClientboundDisconnectLoginPacket(reason));
                 break;
             case ConnectionState.CONFIGURATION:
-                await this.send(new DisconnectConfigurationPacket(reason));
+                await this.send(new ClientboundDisconnectConfigurationPacket(reason));
                 break;
             case ConnectionState.PLAY:
-                await this.send(new DisconnectPlayPacket(reason));
+                await this.send(new ClientboundDisconnectPlayPacket(reason));
                 break;
         }
     }

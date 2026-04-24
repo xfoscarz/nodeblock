@@ -19,7 +19,8 @@
         "composite": false,
 
         "paths": {
-            "@generated/*": [ "./Generated/*" ]
+            "@generated/*": [ "./Generated/*" ],
+            "@/*": [ "./src/*" ]
         },
 
         "types": [ "node" ]

@@ -1,9 +1,15 @@
-import { BufferedReader } from "../BufferedIO";
-import { Packet } from "./Packet";
-import { AcknowledgeFinishConfiguration, ClientInformationPacket, ServerboundKeepAliveConfigurationPacket, ServerboundPluginMessagePacket } from "./Serverbound";
+import { BufferedReader } from "@/Network/BufferedIO";
+import {
+    ServerboundAcknowledgeFinishConfigurationPacket,
+    ServerboundClientInformationPacket,
+    ServerboundKeepAliveConfigurationPacket,
+    ServerboundPluginMessagePacket
+} from "@/Network/Packets.barrel";
+import { ServerboundPacket } from "@/Network/Packet";
 
-export namespace Configuration {
-    export async function decode(reader: BufferedReader, packetID: number): Promise<Packet> {
+export default Configuration;
+namespace Configuration {
+    export async function decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
         switch (packetID) {
             case 0x0: // CLIENT_INFORMATION
                 const locale = await reader.readNextString();
@@ -15,7 +21,7 @@ export namespace Configuration {
                 const enableTextFiltering = await reader.readNextBoolean();
                 const allowServerListings = await reader.readNextBoolean();
                 const particleStatus = await reader.readNextVarInt();
-                return new ClientInformationPacket(
+                return new ServerboundClientInformationPacket(
                     locale,
                     viewDistance,
                     chatMode,
@@ -31,7 +37,7 @@ export namespace Configuration {
                 const data = await reader.readAllBytes();
                 return new ServerboundPluginMessagePacket(identifier, data);
             case 0x3: // ACKNOWLEDGE_FINISH_CONFIGURATION
-                return new AcknowledgeFinishConfiguration();
+                return new ServerboundAcknowledgeFinishConfigurationPacket();
             case 0x4: // SERVERBOUND_KEEP_ALIVE
                 const keepAliveID = await reader.readNextLong();
                 return new ServerboundKeepAliveConfigurationPacket(keepAliveID);

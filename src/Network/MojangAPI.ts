@@ -1,6 +1,6 @@
-import https from "node:https";
-import UUID from "../Minecraft/UUID";
-import { fromBase64 } from "../Util";
+import UUID from "@/Minecraft/UUID";
+import { fromBase64 } from "@/Util";
+import https from "node:http";
 
 export namespace MojangAPI {
     export async function getUUID(username: string): Promise<UUID | null> {

@@ -1,7 +1,7 @@
-import GameProfile from "../../Minecraft/GameProfile";
-import { ClientboundPacket } from "../Packet";
+import GameProfile from "@/Minecraft/GameProfile";
+import { ClientboundPacket } from "@/Network/Packet";
 
-export default class LoginSuccessPacket extends ClientboundPacket {
+export default class ClientboundLoginSuccessPacket extends ClientboundPacket {
     constructor(
         public gameProfile: GameProfile
     ) {

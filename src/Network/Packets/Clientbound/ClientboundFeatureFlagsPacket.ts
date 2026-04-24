@@ -1,7 +1,7 @@
-import { Identifier } from "../../Minecraft/Identifier";
-import { ClientboundPacket } from "../Packet";
+import { Identifier } from "@/Minecraft/Identifier";
+import { ClientboundPacket } from "@/Network/Packet";
 
-export default class FeatureFlagsPacket extends ClientboundPacket {
+export default class ClientboundFeatureFlagsPacket extends ClientboundPacket {
     constructor(
         public features: Identifier[]
     ) {

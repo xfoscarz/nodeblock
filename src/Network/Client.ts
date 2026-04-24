@@ -1,4 +1,4 @@
-import { ClientInformationChatMode } from "../Packets/Serverbound";
+import { ClientInformationChatMode } from "@/Network/Packets/Serverbound/ServerboundClientInformationPacket";
 
 export default class Client {
     public locale: string = "en_us";

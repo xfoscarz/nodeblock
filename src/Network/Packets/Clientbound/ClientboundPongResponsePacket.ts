@@ -1,6 +1,6 @@
-import { ClientboundPacket } from "../Packet";
+import { ClientboundPacket } from "@/Network/Packet";
 
-export default class PongResponsePacket extends ClientboundPacket {
+export default class ClientboundPongResponsePacket extends ClientboundPacket {
     constructor(
         public timestamp: bigint
     ) {

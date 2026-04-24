@@ -1,12 +1,16 @@
-import { BufferedWriter } from "../BufferedIO";
+import { BufferedWriter } from "@/Network/BufferedIO";
 
-export abstract class Packet {
-    constructor(
-        public readonly packetID: number
-    ) {};
+export interface Packet {
+    readonly packetID: number;
 }
 
-export abstract class ClientboundPacket extends BufferedWriter {
+export abstract class ServerboundPacket implements Packet {
+    constructor(
+        readonly packetID: number
+    ) {}
+}
+
+export abstract class ClientboundPacket extends BufferedWriter implements Packet {
     private _payload!: Uint8Array;
 
     constructor(

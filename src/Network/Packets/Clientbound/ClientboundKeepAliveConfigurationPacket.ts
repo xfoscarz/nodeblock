@@ -1,4 +1,4 @@
-import { ClientboundPacket } from "../Packet";
+import { ClientboundPacket } from "@/Network/Packet";
 
 export default class ClientboundKeepAliveConfigurationPacket extends ClientboundPacket {
     constructor(

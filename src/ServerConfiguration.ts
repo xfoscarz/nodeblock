@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 
-export namespace Config {
+export namespace ServerConfiguration {
     export const ROOT_FOLDER = "./Config";
 
     export function getFile(filePath: string): Uint8Array {

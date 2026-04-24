@@ -1,5 +1,6 @@
 import { BlockState } from "./block";
 import { VanillaParticles } from "../vanilla/particles";
+import { VanillaItems } from "@/Minecraft/Types/vanilla/items";
 
 export type Particle = {
     type: VanillaParticles;
@@ -27,7 +28,7 @@ export type Particle = {
     color: number | [number, number, number];
 } | {
     type: "minecraft:item";
-    item: { id: string; components?: {} } | string;
+    item: { id: string; components?: {} } | VanillaItems;
 } | {
     type: "minecraft:sculk_charge";
     roll: number;

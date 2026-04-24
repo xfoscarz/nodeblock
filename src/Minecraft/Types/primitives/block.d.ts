@@ -4,7 +4,7 @@ import { VanillaBlocks, VanillaBlockTags, VanillaBlockPredicateTypes, VanillaBlo
 import { IdentifierOrTag, ListOfAtLeastOne } from "../../../Util";
 import { VanillaNoises } from "../vanilla/noises";
 
-type BlockStateString<T> = (string & {}) | T;
+type BlockStateString<T extends string> = (string & {}) | T;
 type BlockStateBoolean = BlockStateString<"true" | "false">;
 type BlockStateInteger<T extends number = number> = BlockStateString<`${T}`>;
 
@@ -14,8 +14,6 @@ export type BlockState = {
 }
 
 export namespace BlockState {
-    export type VanillaPropertyNames = (string & {}) | keyof Properties;
-
     export type Properties = {
         age?: BlockStateInteger<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25>;
         attached?: BlockStateBoolean;

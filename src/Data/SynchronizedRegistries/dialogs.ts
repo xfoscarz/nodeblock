@@ -1,4 +1,4 @@
-import { Dialog } from "../../Minecraft/Registries/dialog";
+import { Dialog } from "../../Minecraft/Types/registries/dialog";
 
 const dialogs: Record<string, Dialog> = {
     custom_options: {

@@ -1,4 +1,4 @@
-import { Identifier } from "../../Minecraft/identifier";
+import { Identifier } from "../../Minecraft/Identifier";
 import { ClientboundPacket } from "../Packet";
 
 export default class FeatureFlagsPacket extends ClientboundPacket {

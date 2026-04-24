@@ -1,13 +1,14 @@
-import { TextComponent } from "../textComponent";
+import { TextComponent } from "../../Text";
+import { VanillaTranslatables } from "../vanilla/textComponents";
 
 export type ChatType = {
     chat: {
-        translation_key: TextComponent.Translatable.VanillaKeys;
+        translation_key: VanillaTranslatables;
         parameters: ( "sender" | "target" | "content" )[];
         style?: TextComponent.Styles;
     }
     narration: {
-        translation_key: TextComponent.Translatable.VanillaKeys;
+        translation_key: VanillaTranslatables;
         parameters: ( "sender" | "target" | "content" )[];
         style?: TextComponent.Styles;
     }

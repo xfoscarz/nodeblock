@@ -1,4 +1,4 @@
-import { BannerPattern } from "../../Minecraft/Registries/bannerPattern";
+import { BannerPattern } from "../../Minecraft/Types/registries/bannerPattern";
 
 const bannerPatterns: Record<string, BannerPattern> = {
     "base": {

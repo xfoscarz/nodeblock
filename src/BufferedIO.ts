@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:stream";
-import { Identifier } from "./Minecraft/identifier";
 import { bigEndian } from "./Util";
-import UUID from "./Minecraft/uuid";
-import GameProfile from "./Minecraft/gameProfile";
 import { NBT } from "./Minecraft/NBT/nbt";
+import UUID from "./Minecraft/UUID";
+import { Identifier } from "./Minecraft/Identifier";
+import GameProfile from "./Minecraft/GameProfile";
 
 export class BufferedReader {
     private _buffer: number[] = [];

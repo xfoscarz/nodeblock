@@ -1,4 +1,4 @@
-import GameProfile from "../../Minecraft/gameProfile";
+import GameProfile from "../../Minecraft/GameProfile";
 import { ClientboundPacket } from "../Packet";
 
 export default class LoginSuccessPacket extends ClientboundPacket {

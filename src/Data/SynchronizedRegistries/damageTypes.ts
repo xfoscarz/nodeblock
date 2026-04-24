@@ -1,4 +1,4 @@
-import { DamageType } from "../../Minecraft/Registries/damageType";
+import { DamageType } from "../../Minecraft/Types/registries/damageType";
 
 const damageTypes: Record<string, DamageType> = {
     "arrow": {

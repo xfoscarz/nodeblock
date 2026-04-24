@@ -4,9 +4,8 @@ import { v4 } from "uuid";
 import { BufferedReader } from "../BufferedIO";
 import { Config } from "../Config";
 import { HTMLLogger, info, printBuffer } from "../Debug";
-import GameProfile from "../Minecraft/gameProfile";
-import { Identifier } from "../Minecraft/identifier";
-import { centerMotd } from "../Minecraft/legacyText";
+import GameProfile from "../Minecraft/GameProfile";
+import { Identifier } from "../Minecraft/Identifier";
 import ClientboundKeepAliveConfigurationPacket from "../Packets/Clientbound/ClientboundKeepAliveConfigurationPacket";
 import ClientboundKeepAlivePlayPacket from "../Packets/Clientbound/ClientboundKeepAlivePlayPacket";
 import DisconnectConfigurationPacket from "../Packets/Clientbound/DisconnectConfigurationPacket";
@@ -26,6 +25,7 @@ import { AcknowledgeFinishConfiguration, ClientInformationPacket, HandshakeInten
 import { Status } from "../Packets/Status";
 import Client from "./Client";
 import Server, { ServerMode } from "./Server";
+import { LegacyText } from "../Minecraft/Text";
 
 interface ConnectionEvents {
     "login": [];
@@ -178,7 +178,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                     "online": onlinePlayers,
                     "sample": []
                 },
-                "description": { "text": this.server.motd.centered ? centerMotd(this.server.motd.text) : this.server.motd.text },
+                "description": { "text": this.server.motd.centered ? LegacyText.centerMOTD(this.server.motd.text) : this.server.motd.text },
                 "enforcesSecureChat": false,
                 "favicon": base64Data.length != 0 ? Buffer.from(base64Data).toString("base64") : ""
             };

@@ -1,9 +1,9 @@
 import net from "net";
-import { Identifier } from "../Minecraft/identifier";
-import { chatcolor } from "../Minecraft/legacyText";
+import { Identifier } from "../Minecraft/Identifier";
 import Connection from "./Connection";
 import { info } from "../Debug";
-import WebServer from "../Panel/WebServer";
+import WebServer from "../WebPanel/WebServer";
+import { LegacyText } from "../Minecraft/Text";
 
 type ServerOptions = {
     port?: number;
@@ -47,7 +47,7 @@ export default class Server {
         
         if (this.port == this.web) throw new Error("Minecraft server port and web port cannot be the same.");
 
-        this.motd = ((typeof options.motd == "string") ? { centered: false, text: options.motd } : options.motd) || { centered: false, text: chatcolor("&fA &9node&bblock&f server") };
+        this.motd = ((typeof options.motd == "string") ? { centered: false, text: options.motd } : options.motd) || { centered: false, text: LegacyText.transform("&fA &9node&bblock&f server") };
         this.maxPlayers = options.maxPlayers || 20;
         this.softwareName = options.softwareName || "nodeblock";
         this.featureFlags = options.featureFlags || [ Identifier.ofVanilla("vanilla") ];

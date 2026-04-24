@@ -1,5 +1,5 @@
-import { Identifier } from "../Minecraft/identifier";
-import UUID from "../Minecraft/uuid";
+import { Identifier } from "../Minecraft/Identifier";
+import UUID from "../Minecraft/UUID";
 import { Packet } from "./Packet";
 
 export class HandshakePacket extends Packet {

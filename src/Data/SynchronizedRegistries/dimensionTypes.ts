@@ -1,4 +1,4 @@
-import { DimensionType } from "../../Minecraft/Registries/dimensionType";
+import { DimensionType } from "../../Minecraft/Types/registries/dimensionType";
 
 const dimensionTypes: Record<string, DimensionType> = {
     overworld: {

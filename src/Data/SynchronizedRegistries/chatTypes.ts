@@ -1,4 +1,4 @@
-import { ChatType } from "../../Minecraft/Registries/chatType";
+import { ChatType } from "../../Minecraft/Types/registries/chatType";
 
 const chatTypes: Record<string, ChatType> = {
     "chat": {

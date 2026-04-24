@@ -1,4 +1,4 @@
-export const MinecraftVersions = Object.freeze({
+export const Versions = Object.freeze({
     "26.1": 775,
     "1.21.11": 774,
     "1.21.11-rc3": 774,
@@ -738,12 +738,12 @@ export const MinecraftVersions = Object.freeze({
     "13w41a": 0
 })
 
-type ValidVersionStrings = keyof typeof MinecraftVersions;
+type ValidVersionStrings = keyof typeof Versions;
 export type MinecraftVersionStrings = ValidVersionStrings | (string & {});
 
-export function getVersionFromProtocol(protocol: number): MinecraftVersionStrings | null {
-    for (const version in MinecraftVersions) {
-        if (MinecraftVersions[version as ValidVersionStrings] == protocol) {
+export function getFromProtocol(protocol: number): MinecraftVersionStrings | null {
+    for (const version in Versions) {
+        if (Versions[version as ValidVersionStrings] == protocol) {
             return version;
         }
     }

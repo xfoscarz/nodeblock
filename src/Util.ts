@@ -1,5 +1,6 @@
 export type ListOfAtLeastOne<T> = [ T, ...T[] ];
 export type StringContaining<T extends string> = `${string}${T}${string}`;
+export type IdentifierOrTag<ID, Tag> = ID | Tag | (ID | ID[] | Tag)[];
 
 export function bigEndian(chunk: Iterable<number>, msb: boolean = false): bigint {
     const size = msb ? 7n : 8n;

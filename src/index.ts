@@ -1,6 +1,5 @@
 import { writeFileSync } from "node:fs";
-import { chatcolor } from "./Minecraft/legacyText";
-import { MinecraftVersions } from "./Minecraft/versions";
+import { Versions } from "./Minecraft/MinecraftVersion";
 import Server from "./Network/Server";
 
 // const server = new Server({

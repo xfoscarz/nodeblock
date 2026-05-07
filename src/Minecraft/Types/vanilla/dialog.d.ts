@@ -1,22 +1,26 @@
+import { EnumString } from "@/Util";
 
-export type VanillaDialogTypes = (string & {})
+export type VanillaDialogTypes = EnumString<
     | "minecraft:notice"
     | "minecraft:confirmation"
     | "minecraft:multi_action"
     | "minecraft:server_links"
-    | "minecraft:dialog_list";
+    | "minecraft:dialog_list"
+>;
 
-export type VanillaDialogBodyTypes = (string & {})
+export type VanillaDialogBodyTypes = EnumString<
     | "minecraft:plain_message"
-    | "minecraft:item";
+    | "minecraft:item"
+>;
 
-export type VanillaInputTypes = (string & {})
+export type VanillaInputTypes = EnumString<
     | "minecraft:text"
     | "minecraft:boolean"
     | "minecraft:single_option"
-    | "minecraft:number_range";
+    | "minecraft:number_range"
+>;
 
-export type VanillaActionTypes = (string & {})
+export type VanillaActionTypes = EnumString<
     | "minecraft:open_url"
     | "minecraft:run_command"
     | "minecraft:suggest_command"
@@ -25,4 +29,5 @@ export type VanillaActionTypes = (string & {})
     | "minecraft:show_dialog"
     | "minecraft:custom"
     | "minecraft:dynamic/run_command"
-    | "minecraft:dynamic/custom";
+    | "minecraft:dynamic/custom"
+>;

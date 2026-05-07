@@ -1,4 +1,6 @@
-export type VanillaVillagerAIs = (string & {})
+import { EnumString } from "@/Util";
+
+export type VanillaVillagerAIs = EnumString<
     | "minecraft:core"
     | "minecraft:hide"
     | "minecraft:idle"
@@ -7,4 +9,5 @@ export type VanillaVillagerAIs = (string & {})
     | "minecraft:play"
     | "minecraft:pre_raid"
     | "minecraft:raid"
-    | "minecraft:rest";
+    | "minecraft:rest"
+>;

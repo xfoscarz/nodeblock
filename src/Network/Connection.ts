@@ -1,5 +1,4 @@
 import { HTMLLogger, info, printBuffer } from "@/Debug";
-import GameProfile from "@/Minecraft/GameProfile";
 import { Identifier } from "@/Minecraft/Identifier";
 import { BufferedReader } from "@/Network/BufferedIO";
 import Client from "@/Network/Client";
@@ -34,6 +33,7 @@ import { v4 } from "uuid";
 import ClientboundStatusResponsePacket, { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
 import { ServerConfiguration } from "@/ServerConfiguration";
 import { LegacyText } from "@/Minecraft/Text";
+import GameProfile from "@/Minecraft/GameProfile";
 
 interface ConnectionEvents {
     "login": [];

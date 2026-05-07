@@ -1,4 +1,6 @@
-export type VanillaBlockStateProperties = (string & {})
+import { EnumString } from "@/Util";
+
+export type VanillaBlockStateProperties = EnumString<
     | "age"
     | "attached"
     | "attachment"
@@ -90,18 +92,20 @@ export type VanillaBlockStateProperties = (string & {})
     | "vault_state"
     | "vertical_direction"
     | "waterlogged"
-    | "west";
+    | "west"
+>;
 
-export type VanillaBlockStateProviderTypes = (string & {})
+export type VanillaBlockStateProviderTypes = EnumString<
     | "minecraft:single_state_provider"
     | "minecraft:rotated_block_provider"
     | "minecraft:weighted_state_provider"
     | "minecraft:randomized_int_state_provider"
     | "minecraft:noise_provider"
     | "minecraft:dual_noise_provider"
-    | "minecraft:noise_threshold_provider";
+    | "minecraft:noise_threshold_provider"
+>;
 
-export type VanillaBlockPredicateTypes = (string & {})
+export type VanillaBlockPredicateTypes = EnumString<
     | "minecraft:true"
     | "minecraft:all_of"
     | "minecraft:any_of"
@@ -112,9 +116,10 @@ export type VanillaBlockPredicateTypes = (string & {})
     | "minecraft:matching_blocks"
     | "minecraft:replaceable"
     | "minecraft:solid"
-    | "minecraft:would_survive";
+    | "minecraft:would_survive"
+>;
 
-export type VanillaBlockTags = (string & {})
+export type VanillaBlockTags = EnumString<
     | "#minecraft:acacia_logs"
     | "#minecraft:air"
     | "#minecraft:all_hanging_signs"
@@ -318,9 +323,10 @@ export type VanillaBlockTags = (string & {})
     | "#minecraft:mineable/axe"
     | "#minecraft:mineable/hoe"
     | "#minecraft:mineable/pickaxe"
-    | "#minecraft:mineable/shovel";
+    | "#minecraft:mineable/shovel"
+>;
 
-export type VanillaBlocks = (string & {})
+export type VanillaBlocks = EnumString<
     | "minecraft:acacia_button"
     | "minecraft:acacia_door"
     | "minecraft:acacia_fence"
@@ -1488,4 +1494,5 @@ export type VanillaBlocks = (string & {})
     | "minecraft:yellow_wall_banner"
     | "minecraft:yellow_wool"
     | "minecraft:zombie_head"
-    | "minecraft:zombie_wall_head";
+    | "minecraft:zombie_wall_head"
+>;

@@ -9,7 +9,7 @@ export default class HTTPRequest {
     constructor(
         path: string,
         public readonly protocol: `HTTP/${string}`,
-        private _method: HTTPRequestMethods | (string & {}),
+        private _method: HTTPRequestMethods,
         headers: Record<string, string>
     ) {
         const [ route, ...params ] = path.split("?");

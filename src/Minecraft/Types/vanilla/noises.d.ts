@@ -1,4 +1,4 @@
-export type VanillaNoises = (string & {})
+export type VanillaNoises = EnumString<
     | "minecraft:aquifer_barrier"
     | "minecraft:aquifer_fluid_level_floodedness"
     | "minecraft:aquifer_fluid_level_spread"
@@ -58,4 +58,5 @@ export type VanillaNoises = (string & {})
     | "minecraft:temperature"
     | "minecraft:temperature_large"
     | "minecraft:vegetation"
-    | "minecraft:vegetation_large";
+    | "minecraft:vegetation_large"
+>;

@@ -1,4 +1,4 @@
-export type VanillaKeybinds = (string & {})
+export type VanillaKeybinds = EnumString<
     | "key.jump"
     | "key.sneak"
     | "key.sprint"
@@ -56,9 +56,10 @@ export type VanillaKeybinds = (string & {})
     | "key.debug.focusPause"
     | "key.debug.profilingChart"
     | "key.debug.fpsCharts"
-    | "key.debug.networkCharts";
+    | "key.debug.networkCharts"
+>;
 
-export type VanillaTranslatables = (string & {})
+export type VanillaTranslatables = EnumString<
     | "accessibility.onboarding.accessibility.button"
     | "accessibility.onboarding.screen.narrator"
     | "accessibility.onboarding.screen.title"
@@ -7825,4 +7826,5 @@ export type VanillaTranslatables = (string & {})
     | "tutorial.punch_tree.title"
     | "tutorial.socialInteractions.description"
     | "tutorial.socialInteractions.title"
-    | "upgrade.minecraft.netherite_upgrade";
+    | "upgrade.minecraft.netherite_upgrade"
+>;

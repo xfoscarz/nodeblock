@@ -1,7 +1,18 @@
-export type SoundCategory = "master" | "music" | "record" | "weather" | "block" | "hostile" | "neutral" | "player" | "ambient" | "voice" | "ui";
+export type SoundCategory = EnumString<
+    | "master"
+    | "music"
+    | "record"
+    | "weather"
+    | "block"
+    | "hostile"
+    | "neutral"
+    | "player"
+    | "ambient"
+    | "voice"
+    | "ui"
+>;
 
-export type VanillaSoundEvents =
-    | (string & {})
+export type VanillaSoundEvents = EnumString<
     | "minecraft:ambient.basalt_deltas.additions"
     | "minecraft:ambient.basalt_deltas.loop"
     | "minecraft:ambient.basalt_deltas.mood"
@@ -1838,4 +1849,5 @@ export type VanillaSoundEvents =
     | "minecraft:ui.toast.out"
     | "minecraft:weather.end_flash"
     | "minecraft:weather.rain"
-    | "minecraft:weather.rain.above";
+    | "minecraft:weather.rain.above"
+>;

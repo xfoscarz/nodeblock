@@ -1,3 +1,5 @@
+import { EnumString } from "@/Util";
+
 export const Versions = Object.freeze({
     "26.1": 775,
     "1.21.11": 774,
@@ -739,7 +741,7 @@ export const Versions = Object.freeze({
 })
 
 type ValidVersionStrings = keyof typeof Versions;
-export type MinecraftVersionStrings = ValidVersionStrings | (string & {});
+export type MinecraftVersionStrings = EnumString<ValidVersionStrings>;
 
 export function getFromProtocol(protocol: number): MinecraftVersionStrings | null {
     for (const version in Versions) {

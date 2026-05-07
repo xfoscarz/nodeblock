@@ -1,4 +1,6 @@
-export type VanillaDamageTypes = (string & {})
+import { EnumString } from "@/Util";
+
+export type VanillaDamageTypes = EnumString<
     | "minecraft:arrow"
     | "minecraft:bad_respawn_point"
     | "minecraft:cactus"
@@ -48,4 +50,5 @@ export type VanillaDamageTypes = (string & {})
     | "minecraft:unattributed_fireball"
     | "minecraft:wind_charge"
     | "minecraft:wither"
-    | "minecraft:wither_skull";
+    | "minecraft:wither_skull"
+>;

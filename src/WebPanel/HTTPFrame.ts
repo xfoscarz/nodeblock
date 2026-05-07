@@ -81,7 +81,7 @@ export default class HTTPFrame {
             }
         }
 
-        this._requestBuffer = new HTTPRequest(path, protocol as any, method, headers);
+        this._requestBuffer = new HTTPRequest(path, protocol as any, method as any, headers);
         this._contentLength = this._requestBuffer.contentLength || 0;
     }
 

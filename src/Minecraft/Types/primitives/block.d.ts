@@ -1,6 +1,6 @@
 import { IntProvider } from "./intProvider";
 import { Noise } from "./noise";
-import { VanillaBlocks, VanillaBlockTags, VanillaBlockPredicateTypes, VanillaBlockStateProviderTypes } from "../vanilla/blocks";
+import { VanillaBlocks, VanillaBlockTags, VanillaBlockPredicateTypes, VanillaBlockStateProviderTypes, VanillaBlockStateProperties } from "../vanilla/blocks";
 import { IdentifierOrTag, ListOfAtLeastOne } from "../../../Util";
 import { VanillaNoises } from "../vanilla/noises";
 
@@ -127,7 +127,7 @@ export namespace BlockState {
         entries: ListOfAtLeastOne<{ data: BlockState; weight: number; }>;
     } | {
         type: "minecraft:randomized_int_state_provider";
-        property: BlockState.VanillaPropertyNames;
+        property: VanillaBlockStateProperties;
         values: IntProvider;
         source: Provider;
     } | {

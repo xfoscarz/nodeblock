@@ -1,4 +1,6 @@
-export type VanillaAttributes = (string & {})
+import { EnumString } from "@/Util";
+
+export type VanillaAttributes = EnumString<
     | "minecraft:air_drag_modifier"
     | "minecraft:armor"
     | "minecraft:armor_toughness"
@@ -38,4 +40,5 @@ export type VanillaAttributes = (string & {})
     | "minecraft:tempt_range"
     | "minecraft:water_movement_efficiency"
     | "minecraft:waypoint_receive_range"
-    | "minecraft:waypoint_transmit_range";
+    | "minecraft:waypoint_transmit_range"
+>;

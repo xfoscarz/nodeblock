@@ -1,11 +1,12 @@
-export type VanillaValueEffectTypes = (string & {})
+export type VanillaValueEffectTypes = EnumString<
     | "minecraft:set"
     | "minecraft:add"
     | "minecraft:multiply"
     | "minecraft:remove_binomial"
     | "minecraft:all_of"
+>;
 
-export type VanillaEntityEffectTypes = (string & {})
+export type VanillaEntityEffectTypes = EnumString<
     | "minecraft:all_of"
     | "minecraft:apply_impulse"
     | "minecraft:apply_exhaustion"
@@ -20,9 +21,10 @@ export type VanillaEntityEffectTypes = (string & {})
     | "minecraft:run_function"
     | "minecraft:set_block_properties"
     | "minecraft:spawn_particles"
-    | "minecraft:summon_entity";
+    | "minecraft:summon_entity"
+>;
 
-export type VanillaEnchantments = (string & {})
+export type VanillaEnchantments = EnumString<
     | "minecraft:aqua_affinity"
     | "minecraft:bane_of_arthropods"
     | "minecraft:binding_curse"
@@ -65,17 +67,19 @@ export type VanillaEnchantments = (string & {})
     | "minecraft:thorns"
     | "minecraft:unbreaking"
     | "minecraft:vanishing_curse"
-    | "minecraft:wind_burst";
+    | "minecraft:wind_burst"
+>;
 
-export type VanillaLevelBasedValueTypes = (string & {})
+export type VanillaLevelBasedValueTypes = EnumString<
     | "minecraft:exponent"
     | "minecraft:linear"
     | "minecraft:levels_squared"
     | "minecraft:clamped"
     | "minecraft:fraction"
-    | "minecraft:lookup";
+    | "minecraft:lookup"
+>;
 
-export type VanillaEnchantmentTags = (string & {})
+export type VanillaEnchantmentTags = EnumString<
     | "#minecraft:curse"
     | "#minecraft:double_trade_price"
     | "#minecraft:in_enchanting_table"
@@ -104,6 +108,9 @@ export type VanillaEnchantmentTags = (string & {})
     | "#minecraft:trades/savanna_common"
     | "#minecraft:trades/snow_common"
     | "#minecraft:trades/swamp_common"
-    | "#minecraft:trades/taiga_common";
+    | "#minecraft:trades/taiga_common"
+>;
 
-export type VanillaLocationBasedEffectTypes = (string & {}) | "minecraft:attribute";
+export type VanillaLocationBasedEffectTypes = EnumString<
+    | "minecraft:attribute"
+>;

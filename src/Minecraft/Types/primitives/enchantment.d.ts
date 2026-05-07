@@ -25,7 +25,7 @@ export type EffectComponent = {
     "minecraft:fishing_time_reduction"?: RequisiteEffect<Effect.ValueEffect>[],
     "minecraft:fishing_luck_bonus"?: RequisiteEffect<Effect.ValueEffect>[],
     "minecraft:mob_experience"?: RequisiteEffect<Effect.ValueEffect>[],
-    "minecraft:equipment_drops"?: (RequisiteEffect<Effect.ValueEffect> | { enchanted: "attacker" | "victim"; })[];
+    "minecraft:equipment_drops"?: (RequisiteEffect<Effect.ValueEffect> | { enchanted: EnumString<"attacker" | "victim">; })[];
 
     "minecraft:crossbow_charge_time"?: Effect.ValueEffect;
     "minecraft:trident_spin_attack_strength"?: Effect.ValueEffect;
@@ -35,8 +35,8 @@ export type EffectComponent = {
     "minecraft:projectile_spawned"?: RequisiteEffect<Effect.EntityEffect>[],
     "minecraft:post_piercing_attack"?: RequisiteEffect<Effect.EntityEffect>[],
     "minecraft:post_attack"?: (RequisiteEffect<Effect.EntityEffect> | {
-        enchanted: "attacker" | "victim" | "damaging_entity";
-        affected: "attacker" | "victim" | "damaging_entity";
+        enchanted: EnumString<"attacker" | "victim" | "damaging_entity">;
+        affected: EnumString<"attacker" | "victim" | "damaging_entity">;
     })[],
 
     "minecraft:location_changed"?: RequisiteEffect<Effect.LocationBasedEffect>[];
@@ -90,7 +90,7 @@ namespace Effect {
     export type AttributeEffect = {
         attribute: VanillaAttributes;
         amount: LevelBasedValue;
-        operation: "add_value" | "add_multiplied_base" | "add_multiplied_total";
+        operation: EnumString<"add_value" | "add_multiplied_base" | "add_multiplied_total">;
         id: string; // TODO resource location ???
     }
     
@@ -131,7 +131,7 @@ namespace Effect {
         offset?: [ number, number, number ];
         radius: LevelBasedValue;
         create_fire: boolean;
-        block_interaction: "none" | "block" | "mob" | "tnt" | "trigger";
+        block_interaction: EnumString<"none" | "block" | "mob" | "tnt" | "trigger">;
         small_particle: Particle;
         large_particle: Particle;
         block_particles?: {
@@ -220,7 +220,7 @@ namespace Effect {
         type: "minecraft:attribute";
         attribute: VanillaAttributes;
         amount: LevelBasedValue;
-        operation: "add_value" | "add_multiplied_base" | "add_multiplied_total";
+        operation: EnumString<"add_value" | "add_multiplied_base" | "add_multiplied_total">;
         id: string; // TODO resource location
     } | {
         type: string;

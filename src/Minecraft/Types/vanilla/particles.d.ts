@@ -1,4 +1,4 @@
-export type VanillaParticles = (string & {})
+export type VanillaParticles = EnumString<
     | "minecraft:bubble"
     | "minecraft:basic_bubble_particle_manual"
     | "minecraft:eye_of_ender_bubble_particle"
@@ -158,4 +158,5 @@ export type VanillaParticles = (string & {})
     | "minecraft:smoke"
     | "minecraft:large_smoke"
     | "minecraft:glow_squid_ink"
-    | "minecraft:squid_ink";
+    | "minecraft:squid_ink"
+>;

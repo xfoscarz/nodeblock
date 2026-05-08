@@ -1,13 +1,12 @@
-import { writeFileSync } from "node:fs";
+import { LegacyText } from "@/Minecraft/Text";
 import { Versions } from "./Minecraft/MinecraftVersion";
 import Server from "./Network/Server";
 
-// const server = new Server({
-//     minecraftVersions: [ MinecraftVersions.V_1_21_11 ],
-//     motd: {
-//         centered: true,
-//         text: chatcolor("&r&c❤ &9&lHatsune &b&lMiku &r&c❤")
-//     },
-//     webPanelPort: 5000
-// });
-// server.start({ minecraft: true });
+const server = new Server({
+    minecraftVersions: [ Versions["1.21.11"] ],
+    motd: {
+        centered: true,
+        text: LegacyText.transform("&r&c❤ &9&lHatsune &b&lMiku &r&c❤")
+    }
+});
+server.start({ minecraft: true });

@@ -48,10 +48,8 @@ interface ConnectionEvents {
 export default class Connection extends EventEmitter<ConnectionEvents> {
     public static readonly KEEP_ALIVE_THRESHOLD = 15 * 1000;
 
+    public readonly encrypted: boolean;
     public readonly uuid: string;
-    public readonly encrypted: boolean = false;
-
-    private readonly _socket: Socket;
 
     private _client: Client = new Client();
     private _profile!: GameProfile;
@@ -67,10 +65,11 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
     private _timeouts: Record<string, NodeJS.Timeout> = {};
 
-    constructor(public readonly server: Server, socket: Socket) {
+    constructor(
+        public readonly server: Server,
+        private readonly _socket: Socket
+    ) {
         super();
-
-        this._socket = socket;
 
         this.uuid = v4();
         this.encrypted = server.mode != ServerMode.OFFLINE;
@@ -82,7 +81,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
     private _initializeHandlers() {
         this._socket.on("data", chunk => {
-            if (typeof chunk == "string") return this.close();
+            if (typeof chunk == "string") return this.private();
 
             HTMLLogger.serverbound(chunk);
 
@@ -341,9 +340,6 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         this._ended = true;
 
         switch (this._state) {
-            case ConnectionState.HANDSHAKING:
-                this.close();
-                break;
             case ConnectionState.LOGIN:
                 await this.send(new ClientboundDisconnectLoginPacket(reason));
                 break;
@@ -354,6 +350,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 await this.send(new ClientboundDisconnectPlayPacket(reason));
                 break;
         }
+        this.private();
     }
 
     private _clearAllTimeouts() {
@@ -372,8 +369,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         return !!this._profile;
     }
 
-    public close() {
-        this._ended = true;
+    public private() {
         this._socket.end();
         this.removeAllListeners();
         this._clearAllTimeouts();

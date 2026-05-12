@@ -1,3 +1,4 @@
+import { UnknownPacketError } from "@/Errors";
 import { BufferedReader } from "@/Network/BufferedIO";
 import { ServerboundPacket } from "@/Network/Packet";
 import {
@@ -5,9 +6,8 @@ import {
     ServerboundLoginStartPacket
 } from "@/Network/Packets.barrel";
 
-export default Login;
-namespace Login {
-    export async function decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
+export default abstract class Login {
+    public static async decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
         switch (packetID) {
             case 0x0: // LOGIN_START
                 const name = await reader.readNextString();
@@ -17,6 +17,6 @@ namespace Login {
                 return new ServerboundLoginAcknowledgedPacket();
         }
 
-        throw new TypeError("Packet decode error");
+        throw new UnknownPacketError();
     }
 }

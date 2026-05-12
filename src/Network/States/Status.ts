@@ -1,3 +1,4 @@
+import { UnknownPacketError } from "@/Errors";
 import { BufferedReader } from "@/Network/BufferedIO";
 import { ServerboundPacket } from "@/Network/Packet";
 import {
@@ -5,9 +6,8 @@ import {
     ServerboundStatusRequestPacket
 } from "@/Network/Packets.barrel";
 
-export default Status;
-namespace Status {
-    export async function decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
+export default abstract class Status {
+    public static async decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
         switch (packetID) {
             case 0x0: // STATUS_REQUEST
                 return new ServerboundStatusRequestPacket();
@@ -16,6 +16,6 @@ namespace Status {
                 return new ServerboundPingRequestPacket(timestamp);
         }
 
-        throw new TypeError("Packet decode error. State: Status");
+        throw new UnknownPacketError();
     }
 }

@@ -1,12 +1,12 @@
+import { UnknownPacketError } from "@/Errors";
 import { BufferedReader } from "@/Network/BufferedIO";
 import { ServerboundPacket } from "@/Network/Packet";
 import {
     ServerboundHandshakePacket
 } from "@/Network/Packets.barrel";
 
-export default Handshaking;
-namespace Handshaking {
-    export async function decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
+export default abstract class Handshaking {
+    public static async decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
         switch (packetID) {
             case 0x0: // HANDSHAKE
                 const protocolVersion = await reader.readNextVarInt();
@@ -16,6 +16,6 @@ namespace Handshaking {
                 return new ServerboundHandshakePacket(protocolVersion, serverAddress, serverPort, nextState);
         }
 
-        throw new TypeError("Packet decode error");
+        throw new UnknownPacketError();
     }
 }

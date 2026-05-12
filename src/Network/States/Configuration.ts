@@ -6,10 +6,10 @@ import {
     ServerboundPluginMessagePacket
 } from "@/Network/Packets.barrel";
 import { ServerboundPacket } from "@/Network/Packet";
+import { UnknownPacketError } from "@/Errors";
 
-export default Configuration;
-namespace Configuration {
-    export async function decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
+export default abstract class Configuration {
+    public static async decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
         switch (packetID) {
             case 0x0: // CLIENT_INFORMATION
                 const locale = await reader.readNextString();
@@ -42,6 +42,6 @@ namespace Configuration {
                 const keepAliveID = await reader.readNextLong();
                 return new ServerboundKeepAliveConfigurationPacket(keepAliveID);
         }
-        throw new TypeError("Packet decode error");
+        throw new UnknownPacketError();
     }
 }

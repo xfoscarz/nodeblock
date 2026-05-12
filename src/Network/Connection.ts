@@ -1,4 +1,5 @@
-import { HTMLLogger, info, printBuffer } from "@/Debug";
+import { info, printBuffer } from "@/Debug";
+import GameProfile from "@/Minecraft/GameProfile";
 import { Identifier } from "@/Minecraft/Identifier";
 import { BufferedReader } from "@/Network/BufferedIO";
 import Client from "@/Network/Client";
@@ -25,15 +26,14 @@ import {
     ServerboundStatusRequestPacket
 } from "@/Network/Packets.barrel";
 import { HandshakeIntent } from "@/Network/Packets/Serverbound/ServerboundHandshakePacket";
-import Server, { ServerMode } from "@/Network/Server";
+import { NodeblockServer, ServerMode } from "@/Network/NodeblockServer";
 import { Configuration, Handshaking, Login, Play, Status } from "@/Network/States.barrel";
 import EventEmitter from "node:events";
 import { Socket } from "node:net";
 import { v4 } from "uuid";
 import ClientboundStatusResponsePacket, { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
-import { ServerConfiguration } from "@/ServerConfiguration";
 import { LegacyText } from "@/Minecraft/Text";
-import GameProfile from "@/Minecraft/GameProfile";
+import { UnknownPacketError } from "@/Errors";
 
 interface ConnectionEvents {
     "login": [];
@@ -66,7 +66,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     private _timeouts: Record<string, NodeJS.Timeout> = {};
 
     constructor(
-        public readonly server: Server,
+        public readonly server: NodeblockServer,
         private readonly _socket: Socket
     ) {
         super();
@@ -81,23 +81,29 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
     private _initializeHandlers() {
         this._socket.on("data", chunk => {
-            if (typeof chunk == "string") return this.private();
+            if (this._ended) return;
+            if (typeof chunk == "string") return this._cleanup();
 
-            HTMLLogger.serverbound(chunk);
+            this.server.monitor.incomingRaw(chunk);
 
             if (this._state != ConnectionState.PLAY) {
-                printBuffer(chunk, "[Chunk]: ");
+                printBuffer(chunk, "[Inc. Raw Data]: ");
             }
+            this._bufferedReader.write(chunk);
             
             if (!this._processingPacket) {
                 this._processingPacket = true;
                 this._processPacket();
             }
-            this._bufferedReader.write(chunk);
+        });
+
+        this._socket.on("error", error => {
+            console.error(error);
         });
 
         this._socket.on("close", () => {
             this._ended = true;
+            this._cleanup();
             info(`Connection { ${this.uuid} } closed`);
         });
     }
@@ -109,8 +115,9 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         const reader = new BufferedReader(data);
         const packetID = await reader.readNextVarInt();
 
-        HTMLLogger.completePacket(size, packetID, reader.buffer);
-        if (packetID != 0x1b) printBuffer(reader.buffer, `[${this._state} Packet #0x${packetID} ${size}b]: `);
+        this.server.monitor.incomingPacket(size, packetID, reader.buffer);
+
+        if (packetID != 0x1b) printBuffer(reader.buffer, `[Parsed ${this._state} Packet #0x${packetID} ${size}b]: `);
 
         let packet;
 
@@ -138,7 +145,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                     break;
             }
         } catch (error) {
-            if (error instanceof TypeError) {
+            if (error instanceof UnknownPacketError) {
                 await this.disconnect(`Unknown packet format: 0x${packetID.toString(16)}`);
             } else {
                 console.error(error);
@@ -160,6 +167,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                     break;
                 case HandshakeIntent.TRANSFER:
                     this._transfered = true;
+                    break;
                 case HandshakeIntent.LOGIN:
                     this._state = ConnectionState.LOGIN
                     this.emit("login");
@@ -172,7 +180,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         if (packet instanceof ServerboundStatusRequestPacket) {
             const onlinePlayers = 0;
 
-            let base64Data = ServerConfiguration.getFile("server-icon.png");
+            let faviconData = this.server.getFile("server-icon.png");
             let matchVersion = this.server.minecraftVersions.includes(this._protocolVersion);
 
             const data: StatusResponseData = {
@@ -187,7 +195,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 },
                 "description": { "text": this.server.motd.centered ? LegacyText.centerMOTD(this.server.motd.text) : this.server.motd.text },
                 "enforcesSecureChat": false,
-                "favicon": base64Data.length != 0 ? Buffer.from(base64Data).toString("base64") : ""
+                "favicon": faviconData.length != 0 ? Buffer.from(faviconData).toString("base64") : ""
             };
             await this.send(new ClientboundStatusResponsePacket(data));
         } else if (packet instanceof ServerboundPingRequestPacket) {
@@ -329,7 +337,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     }
 
     public async send(packet: ClientboundPacket): Promise<void> {
-        HTMLLogger.clientbound(packet.payload);
+        this.server.monitor.outgoingPacket(packet);
         return new Promise(res => this._socket.write(packet.payload, () => res()));
     }
 
@@ -350,7 +358,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 await this.send(new ClientboundDisconnectPlayPacket(reason));
                 break;
         }
-        this.private();
+        this._cleanup();
     }
 
     private _clearAllTimeouts() {
@@ -369,8 +377,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         return !!this._profile;
     }
 
-    public private() {
-        this._socket.end();
+    private _cleanup() {
+        if (!this._socket.destroyed) this._socket.end();
         this.removeAllListeners();
         this._clearAllTimeouts();
     }

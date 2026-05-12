@@ -31,11 +31,3 @@ const ERROR_COLOR = "\x1b[31m";
 export function error(o: any) {
     console.error(`${ERROR_COLOR}ERROR: ${RESET_COLOR}${o}`);
 }
-
-export namespace HTMLLogger {
-    export function serverbound(chunk: Uint8Array) {}
-
-    export function clientbound(payload: Uint8Array) {}
-
-    export function completePacket(size: number, packetID: number, data: Uint8Array) {}
-}

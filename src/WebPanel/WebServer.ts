@@ -8,6 +8,7 @@ import HTTPResponse, { MIMETypes } from "./HTTPResponse";
 import HTTPConnection from "./HTTPConnection";
 import WebDistribution from "./WebDistribution";
 import path from "node:path";
+import { NodeblockMonitor } from "@/Network/NodeblockServer";
 
 type WebServerOptions = {
     mime: {
@@ -99,5 +100,13 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         response.body = WebDistribution[filepath];
         response.setHeader("Cache-Control", "max-age=" + 60 * 60 * 12);
         return response;
+    }
+}
+
+export class WebMonitor extends NodeblockMonitor {
+    private _webserver?: WebServer;
+
+    public attachServer(webserver: WebServer) {
+        this._webserver = webserver;
     }
 }

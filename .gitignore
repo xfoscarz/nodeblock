@@ -4,6 +4,7 @@ Generated
 
 # codebase
 node_modules
+tsconfig.tsbuildinfo
 
 # macOS
 .DS_Store

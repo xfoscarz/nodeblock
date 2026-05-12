@@ -28,8 +28,8 @@
         "types": [ "node" ]
     },
     "include": [
-        "./src/**/*",
-        "./Generated/**/*",
+        "src",
+        "Generated",
         "esbuild.ts"
     ]
 }

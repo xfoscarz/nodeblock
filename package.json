@@ -9,15 +9,15 @@
         "@types/uuid": "^11.0.0",
         "esbuild": "^0.28.0",
         "eslint": "^10.2.0",
-        "nodemon": "^3.1.14",
+        "sane": "^5.0.1",
         "typescript": "^6.0.2",
         "typescript-eslint": "^8.58.2"
     },
     "scripts": {
-        "dev": "nodemon",
+        "dev": "sane 'yarn build:server && cd dist && node --enable-source-maps --inspect index.js' --glob='**/*.ts' --ignored='**/*.barrel.ts' --ignored='**/*.auto.ts' --ignored='./test/**/*'",
         "web": "yarn --cwd Web dev",
         "build:web": "yarn --cwd Web build",
-        "build:server": "ts-node esbuild.ts --barrel && tsc -b && ts-node esbuild.ts --server",
+        "build:server": "ts-node esbuild.ts --barrel && tsc && ts-node esbuild.ts --server",
         "build:transform": "ts-node esbuild.ts --web-transform",
         "build": "yarn build:web && yarn build:transform && yarn build:server",
         "lint": "eslint",

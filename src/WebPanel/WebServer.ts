@@ -7,8 +7,8 @@ import path from "node:path";
 import { EventEmitter } from "node:stream";
 import * as WebDistribution from "./WebDistribution";
 
-import { httpHandler, HTTPIncomingRequest, HTTPResponse } from "@/WebPanel/HTTP";
-import { server } from "typescript";
+import HTTP, { HTTPIncomingRequest, HTTPResponse } from "@/WebPanel/HTTP";
+import WS from "@/WebPanel/WS";
 
 
 type WebServerOptions = {}
@@ -18,6 +18,10 @@ export type WebConnectionHandler = (server: WebServer, socket: Socket) => void;
 
 interface WebServerEvents {
     "route": [ HTTPIncomingRequest, Socket ];
+    
+    "websocketmessage": [ Socket, Uint8Array ];
+    "websocketclose": [ Socket ];
+    "websocketopen": [ Socket ];
 }
 export default class WebServer extends EventEmitter<WebServerEvents> {
     public readonly server: net.Server;
@@ -30,7 +34,7 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
 
         this.server = new net.Server();
 
-        this.server.on("connection", socket => httpHandler(this, socket));
+        this.server.on("connection", socket => HTTP(this, socket));
         this.server.on("error", (err) => error(err));
 
         this.on("route", (request, socket) => {
@@ -73,8 +77,8 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
 
                     const { handler } = selectivePipeline[pipelineIndex];
                     handler(request, response, next);
-
                 }
+                
                 next();
             }
         });
@@ -116,14 +120,26 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
     }
 
     public useDefaultWebPanel(): this {
-        this.use("/socket", (req, res) => {
-            console.log(req.toString());
-            
-            res.upgrade((server, socket) => {
-                socket.on("data", d => console.log(d));
+        this.use("/", (req, res, next) => {
+            const { connection, upgrade, "sec-websocket-key": websocketKey } = req.headers;
 
-                socket.on("error", console.error);
-            });
+            if (connection.toLowerCase() == "upgrade") {
+                if (!upgrade) {
+                    res.status = 400;
+                    res.send().close();
+                    return;
+                }
+                const upgradeOptions = upgrade.split(",").map(s => s.trim());
+    
+                if (upgradeOptions.includes("websocket")) {
+                    res.upgrade(WS(websocketKey));
+                } else {
+                    res.status = 400;
+                    res.send().close();
+                }
+            } else {
+                next();
+            }
         });
         return this;
     }
@@ -147,17 +163,36 @@ export class Response extends HTTPResponse {
         }
     }
 
-    public upgrade(newHandler: WebConnectionHandler) {
-        this._ended = true;
+    public upgrade(payload: string | Uint8Array, newHandler: WebConnectionHandler): void;
+    public upgrade(newHandler: WebConnectionHandler): void;
+    public upgrade(newHandlerOrPayload: WebConnectionHandler | string | Uint8Array, newHandler?: WebConnectionHandler) {
+        let handler: WebConnectionHandler;
+
+        if (typeof newHandlerOrPayload === "function") {
+            this._ended = true;
+            handler = newHandlerOrPayload;
+        } else {
+            if (!this._ended) {
+                this.send(newHandlerOrPayload);
+            }
+            handler = newHandler!;
+        }
         this.socket.removeAllListeners();
-        newHandler(this.server, this.socket);
+        handler(this.server, this.socket);
     }
     
-    public send(payload?: any) {
-        if (this._ended) return;
+    public send(payload?: string | Uint8Array, close: boolean = false) {
+        if (this._ended) return this;
         this._ended = true;
         if (payload) this.body = payload;
         this.socket.write(this.payload);
+        if (close) this.close();
+        return this;
+    }
+
+    public close() {
+        this._ended = true;
+        this.socket.end();
     }
 
     public get ended() { return this._ended; }

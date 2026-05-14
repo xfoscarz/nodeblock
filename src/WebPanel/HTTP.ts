@@ -2,7 +2,7 @@
 import { capitalize } from "@/Util";
 import { WebConnectionHandler } from "@/WebPanel/WebServer";
 
-export const httpHandler: WebConnectionHandler = (server, socket) => {
+const handler: WebConnectionHandler = (server, socket) => {
     const builder = new HTTPIncomingRequestBuilder(request => {
         server.emit("route", request, socket);
 
@@ -19,20 +19,16 @@ export const httpHandler: WebConnectionHandler = (server, socket) => {
         socket.destroy();
     });
 
-    socket.on("close", () => {
-        socket.removeAllListeners();
-    });
-
     socket.on("timeout", () => {
         socket.end();
     });
 }
+export default handler;
 
 // BUG limit header body size
 // BUG chunked
 // BUG multi-map header
 // BUG content-length validation
-
 export class HTTPIncomingRequestBuilder {
     private _contentLength = -1;
     private _requestBuffer!: HTTPIncomingRequest;
@@ -40,9 +36,9 @@ export class HTTPIncomingRequestBuilder {
 
     constructor(
         public onbuild: (request: HTTPIncomingRequest) => void,
-        initalBuffer?: Uint8Array,
+        initialBuffer?: Uint8Array,
     ) {
-        this._buffer = Buffer.from(initalBuffer || new Uint8Array());
+        this._buffer = Buffer.from(initialBuffer || new Uint8Array());
     }
 
     public write(chunk: string | Uint8Array) {
@@ -242,6 +238,7 @@ export class HTTPResponse implements HTTPFrame {
     public setHeader(name: string, value: any) {
         const words = name.split("-").map(word => capitalize(word)).join("-");
         this.headers[words] = value;
+        return this;
     }
 
     public get body() {

@@ -24,6 +24,8 @@ export enum ServerMode {
 }
 
 export class NodeblockServer {
+    public static readonly SIGNALS = [ "SIGINT", "SIGTERM", "SIGHUP" ];
+
     public readonly server: net.Server;
 
     public readonly port: number;
@@ -39,6 +41,7 @@ export class NodeblockServer {
 
     private _running: boolean = false;
     private _connectionGC?: NodeJS.Timeout;
+    private _handleNodeSignalsGracefully = true;
 
     constructor(
         folder: string, options: ServerOptions,
@@ -57,6 +60,8 @@ export class NodeblockServer {
         this.server = new net.Server();
 
         this.server.on("connection", socket => this.connections.add(new Connection(this, socket)));
+
+        for (const SIGNAL of NodeblockServer.SIGNALS) process.once(SIGNAL, () => this._handleNodeSignalsGracefully ? this.stop() : "");
     }
 
     private _cleanupConnections() {
@@ -81,17 +86,26 @@ export class NodeblockServer {
         }
     }
 
-    public async stop() {
+    public dontHandleNodeSignalsGracefully() {
+        this._handleNodeSignalsGracefully = false;
+        return this;
+    }
+
+    public async stop(): Promise<void> {
         if (!this._running) return;
-        this.server.close();
-        clearInterval(this._connectionGC);
-        
-        for (const connection of this.connections) {
-            // TODO configurable
-            await connection.disconnect("Server closed.");
-        }
-        this.connections.clear();
         this._running = false;
+
+        return new Promise(async res => {
+            clearInterval(this._connectionGC);
+            
+            for (const connection of this.connections) {
+                // TODO configurable
+                await connection.disconnect("Server closed.");
+            }
+            this.connections.clear();
+
+            this.server.close(() => res());
+        });
     }
 
     public start() {

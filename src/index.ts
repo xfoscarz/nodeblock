@@ -22,4 +22,4 @@ container.addAndStart({
     }
 });
 
-container.attachWebPanel(3000);
+container.attachWeb(3000).useDefaultWebPanel();

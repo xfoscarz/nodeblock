@@ -1,75 +1,77 @@
-import { Socket } from "node:net";
 
 import { capitalize } from "@/Util";
-import WebServer from "./WebServer";
+import { WebConnectionHandler } from "@/WebPanel/WebServer";
 
-export default class HTTPConnection {
-    private _requestBuffer!: HTTPRequest;
+export const httpHandler: WebConnectionHandler = (server, socket) => {
+    const builder = new HTTPIncomingRequestBuilder(request => {
+        server.emit("route", request, socket);
+
+        const connectionStatus = request.getHeader("Connection");
+        if (connectionStatus == "close") {
+            socket.end();
+        }
+    });
+
+    socket.on("data", chunk => builder.write(chunk));
+
+    socket.on("error", (err) => {
+        console.error(err);
+        socket.destroy();
+    });
+
+    socket.on("close", () => {
+        socket.removeAllListeners();
+    });
+
+    socket.on("timeout", () => {
+        socket.end();
+    });
+}
+
+// BUG limit header body size
+// BUG chunked
+// BUG multi-map header
+// BUG content-length validation
+
+export class HTTPIncomingRequestBuilder {
     private _contentLength = -1;
-    private _buffer: Buffer = Buffer.alloc(0);
-    private _ended: boolean = false;
+    private _requestBuffer!: HTTPIncomingRequest;
+    private _buffer: Buffer;
 
     constructor(
-        public readonly server: WebServer,
-        public readonly socket: Socket
+        public onbuild: (request: HTTPIncomingRequest) => void,
+        initalBuffer?: Uint8Array,
     ) {
-        this.socket.setTimeout(60 * 1000);
-
-        socket.on("data", chunk => {
-            if (this._ended) return;
-            
-            const data = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
-            this._buffer = Buffer.concat([this._buffer, data]);
-            this._pump();
-        });
-
-        socket.on("error", (err) => {
-            console.error(err);
-            this.socket.destroy();
-        });
-
-        socket.on("close", () => this._ended = true);
-        socket.on("timeout", () => this.close());
+        this._buffer = Buffer.from(initalBuffer || new Uint8Array());
     }
 
-    private _pump() {
+    public write(chunk: string | Uint8Array) {
+        const data = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+        this._buffer = Buffer.concat([ this._buffer, data ]);
+
         while (true) {
             if (this._contentLength === -1) {
                 const headerEnd = this._buffer.indexOf("\r\n\r\n");
                 if (headerEnd === -1) return;
-
+    
                 const headerBlock = this._buffer.subarray(0, headerEnd).toString("utf8");
                 this._buffer = this._buffer.subarray(headerEnd + 4);
-
+    
                 const lines = headerBlock.split("\r\n");
-                this._handleHeader(lines);
-                continue;
-            }
+                this._buildHTTPHeader(lines);
 
-            if (!this._buildRequestBody()) {
+                if (this._contentLength === -1) continue;
+            }
+            
+            if (!this._buildHTTPRequestBody()) {
                 return;
             }
+
+            this.onbuild(this._requestBuffer);
         }
     }
-    
-    private _buildRequestBody(): boolean {
-        if (this._contentLength < 0) return false;
 
-        if (this._buffer.length < this._contentLength) {
-            return false;
-        }
-
-        const body = this._buffer.subarray(0, this._contentLength);
-        this._buffer = this._buffer.subarray(this._contentLength);
-
-        this._requestBuffer.body = Uint8Array.from(body);
-        this._contentLength = -1;
-
-        this._handleRequest(this._requestBuffer);
-        return true;
-    }
-
-    private _handleHeader(lines: string[]) {
+    private _buildHTTPHeader(lines: string[]) {
         if (lines.length === 0) return;
 
         const [method, path, protocol] = lines[0].split(" ");
@@ -86,40 +88,34 @@ export default class HTTPConnection {
             }
         }
 
-        this._requestBuffer = new HTTPRequest(path, protocol as any, method as any, headers);
+        this._requestBuffer = new HTTPIncomingRequest(path, protocol as any, method as any, headers);
         this._contentLength = this._requestBuffer.contentLength || 0;
     }
+    
+    private _buildHTTPRequestBody(): boolean {
+        if (this._contentLength < 0) return false;
+        if (this._buffer.length < this._contentLength) return false;
 
-    private _handleRequest(request: HTTPRequest) {
-        const route = request.route;
-        
-        this.server.emit("route", request, this);
+        const body = this._buffer.subarray(0, this._contentLength);
+        this._buffer = this._buffer.subarray(this._contentLength);
 
-        const connectionStatus = request.getHeader("Connection");
-
-        if (connectionStatus == "close") {
-            this.close();
-        }
-    }
-
-    public get ended() { return this._ended; }
-
-    public close() {
-        if (this._ended || this.socket.destroyed) return;
-        this._ended = true;
-        this.socket.end();
-    }
-
-    public send(response: HTTPResponse) {
-        if (this._ended) throw new Error("Cannot send as response is already baked");
-        const payload = response.payload;
-        this.socket.write(payload);
+        this._requestBuffer.body = body;
+        this._contentLength = -1;
+        return true;
     }
 }
 
-export type HTTPRequestMethods = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
+export type HTTPMethods = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
+export type HTTPProtocols = `HTTP/${string}`;
 
-export class HTTPRequest {
+export interface HTTPFrame {
+    body: Uint8Array | string;
+    headers: Record<string, string>;
+
+    toString(): string;
+}
+
+export class HTTPIncomingRequest implements HTTPFrame {
     public readonly route: string;
     public readonly searchParams: URLSearchParams;
     private _body: Uint8Array | null = null;
@@ -127,8 +123,8 @@ export class HTTPRequest {
     
     constructor(
         path: string,
-        public readonly protocol: `HTTP/${string}`,
-        private _method: HTTPRequestMethods,
+        public readonly protocol: HTTPProtocols,
+        private _method: HTTPMethods,
         headers: Record<string, string>
     ) {
         const [ route, ...params ] = path.split("?");
@@ -139,10 +135,16 @@ export class HTTPRequest {
         for (const name in headers) {
             this._headers[name.toLowerCase()] = headers[name];
         }
+
+        Object.freeze(this._headers);
     }
 
     public getHeader(name: string) {
         return this._headers[name.toLowerCase()];
+    }
+
+    public get headers() {
+        return this._headers;
     }
 
     public get body(): Uint8Array {
@@ -163,6 +165,18 @@ export class HTTPRequest {
         if (Number.isNaN(l)) return 0;
         return l;
     }
+
+    public toString() {
+        let s = `${this.method} ${this.route}${this.searchParams.size !== 0 ? "?" + this.searchParams.toString() : ""} ${this.protocol}\r\n`;
+
+        for (const header in this.headers) {
+            s += `${header.split("-").map(capitalize).join("-")}: ${this.headers[header]}\r\n`;
+        }
+
+        s += `\r\n${this.body.toString()}`;
+
+        return s;
+    }
 }
 
 export type MIMETypes = "text/plain" | "text/html" | "text/css" | "text/csv" | "text/javascript" | "text/markdown" |
@@ -170,14 +184,48 @@ export type MIMETypes = "text/plain" | "text/html" | "text/css" | "text/csv" | "
     "video/mp4" | "video/mpeg" | "video/webm" |
     "image/jpeg" | "image/png" | "image/gif" | "image/svg+xml" | "image/webp" | "image/x-icon" | "image/vnd.microsoft.icon" |
     "application/xml" | "application/pdf" | "application/zip" | "application/gzip" | "application/octet-stream" | "application/json" | "application/x-www-form-urlencoded" | "application/javascript" |
-    "font/woff" | "font/woff2" | "font/ttf" | "font/otf" | "application/vnd.ms-fontobject";
+    "font/woff" | "font/woff2" | "font/ttf" | "font/otf" | "application/vnd.ms-fontobject" | (string & {});
+
+export class MIMETypeAssociationProvider {
+    public static associations: Record<`.${string}`, MIMETypes> = {
+        ".html": "text/html",
+        ".txt": "text/plain",
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".xml": "application/xml",
+        ".json": "application/json",
+        ".jpg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".ico": "image/x-icon",
+        ".svg": "image/svg+xml",
+        ".mp4": "video/mp4",
+        ".mp3": "audio/mpeg",
+        ".wav": "audio/wav",
+        ".pdf": "application/pdf",
+        ".map": "application/json",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+        ".ttf": "font/ttf",
+        ".eot": "application/vnd.ms-fontobject",
+        ".otf": "font/otf"
+    }
+
+    public static default: MIMETypes = "text/plain";
+
+    public static get(extension: `.${string}`): MIMETypes {
+        return this.associations[extension] || this.default;
+    }
+}
 
 type HTTPResponseOptions = {
-    protocol?: string;
+    protocol?: HTTPProtocols;
 };
-export class HTTPResponse {
+export class HTTPResponse implements HTTPFrame {
     public headers: Record<string, any> = {};
-    public protocol: string = "HTTP/1.1";
+    public protocol: HTTPProtocols = "HTTP/1.1";
     
     private _body: Buffer = Buffer.from("");
 
@@ -215,16 +263,16 @@ export class HTTPResponse {
     public get payload(): Uint8Array {
         const body = typeof this.body === "string" ? Buffer.from(this.body, "utf8") : this.body;
 
-        let header = `${this.protocol} ${this.status} ${this.reasonPhrase}\n`;
+        let header = `${this.protocol} ${this.status} ${this.reasonPhrase}\r\n`;
 
         this.setHeader("Content-Length", body.byteLength);
 
         for (const name in this.headers) {
             const value = this.headers[name];
-            header += `${name}: ${value}\n`;
+            header += `${name}: ${value}\r\n`;
         }
 
-        header += "\n";
+        header += "\r\n";
 
         const buffer = Buffer.from(header);
 
@@ -236,6 +284,6 @@ export class HTTPResponse {
     }
 
     public toString() {
-        return this.payload;
+        return this.payload.toString();
     }
 }

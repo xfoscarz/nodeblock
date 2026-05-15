@@ -30,3 +30,11 @@ export async function wait(millis: number): Promise<void> {
 export function capitalize(s: string): string {
     return s[0].toUpperCase() + s.slice(1).toLowerCase();
 }
+
+export function getBitsAt(data: number, ...indices: number[]): number[] {
+    return indices.map(index => getBitAt(data, index));
+}
+
+export function getBitAt(data: number, index: number) {
+    return (data >> (index - 1)) & 1;
+}

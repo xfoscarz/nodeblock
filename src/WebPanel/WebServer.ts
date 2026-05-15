@@ -19,7 +19,7 @@ export type WebConnectionHandler = (server: WebServer, socket: Socket) => void;
 interface WebServerEvents {
     "route": [ HTTPIncomingRequest, Socket ];
     
-    "websocketmessage": [ Socket, Uint8Array ];
+    "websocketmessage": [ Socket, Uint8Array | string ];
     "websocketclose": [ Socket ];
     "websocketopen": [ Socket ];
 }

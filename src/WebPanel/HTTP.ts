@@ -1,5 +1,5 @@
 
-import { capitalize } from "@/Util";
+import { capitalize } from "@shared/Util";
 import { WebConnectionHandler } from "@/WebPanel/WebServer";
 
 const handler: WebConnectionHandler = (server, socket) => {

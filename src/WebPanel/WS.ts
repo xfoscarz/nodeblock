@@ -1,4 +1,4 @@
-import { getBitAt, getBitsAt } from "@/Util";
+import { getBitAt, getBitsAt } from "@shared/Util";
 import { HTTPResponse } from "@/WebPanel/HTTP";
 import { WebConnectionHandler } from "@/WebPanel/WebServer";
 import { hash } from "node:crypto";

@@ -21,7 +21,8 @@
         "build:transform": "ts-node esbuild.ts --web-transform",
         "build": "yarn build:web && yarn build:transform && yarn build:server",
         "lint": "eslint",
-        "postinstall": "yarn --cwd Web"
+        "postinstall": "yarn --cwd Web",
+        "start": "cd dist && node dist/index.js"
     },
     "name": "nodeblock",
     "version": "1.0.0",

@@ -6,6 +6,9 @@
         "name": "Panel",
         "path": "./Web"
     }, {
+        "name": "Shared",
+        "path": "./Shared"
+    }, {
         "name": "Static",
         "path": "./Web/dist"
     }],

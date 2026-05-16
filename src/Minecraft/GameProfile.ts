@@ -1,6 +1,6 @@
-import { MojangAPI } from "../Network/MojangAPI";
-import { toBase64 } from "../Util";
-import UUID from "./UUID";
+import { MojangAPI } from "@/Network/MojangAPI";
+import { toBase64 } from "@shared/Util";
+import UUID from "@/Minecraft/UUID";
 
 interface GameProfileProperties {
     textures: {

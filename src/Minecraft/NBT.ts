@@ -1,5 +1,5 @@
 import { Compression } from "@/Compression/compression";
-import { bigEndian } from "@/Util";
+import { bigEndian } from "@shared/Util";
 
 export enum NBTTypes {
     END = 0,

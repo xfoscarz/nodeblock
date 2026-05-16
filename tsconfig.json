@@ -22,7 +22,8 @@
         
         "paths": {
             "@generated/*": [ "./Generated/*" ],
-            "@/*": [ "./src/*" ]
+            "@/*": [ "./src/*" ],
+            "@shared/*": [ "./Shared/*" ]
         },
 
         "types": [ "node" ]
@@ -30,6 +31,7 @@
     "include": [
         "src",
         "Generated",
-        "esbuild.ts"
+        "esbuild.ts",
+        "Shared"
     ]
 }

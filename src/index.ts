@@ -1,6 +1,6 @@
 import { LegacyText } from "@/Minecraft/Text";
 import Nodeblock from "@/Nodeblock";
-import { Versions } from "./Minecraft/MinecraftVersion";
+import { Versions } from "@shared/MinecraftVersion";
 
 const container = new Nodeblock.ServerContainer([{
     name: "main",

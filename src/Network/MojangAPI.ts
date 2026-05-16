@@ -1,5 +1,5 @@
 import UUID from "@/Minecraft/UUID";
-import { fromBase64 } from "@/Util";
+import { fromBase64 } from "@shared/Util";
 import https from "node:https";
 
 export namespace MojangAPI {

@@ -2,7 +2,7 @@ import GameProfile from "@/Minecraft/GameProfile";
 import { Identifier } from "@/Minecraft/Identifier";
 import { NBT } from "@/Minecraft/NBT";
 import UUID from "@/Minecraft/UUID";
-import { bigEndian } from "@/Util";
+import { bigEndian } from "@shared/Util";
 import EventEmitter from "node:events";
 
 export class BufferedReader {

@@ -1,11 +1,11 @@
 import net, { Socket } from "node:net";
-import { error, info } from "../Debug";
+import { error, info } from "@/Debug";
 
 // @ts-ignore
 import { NodeblockMonitor } from "@/Network/NodeblockServer";
 import path from "node:path";
 import { EventEmitter } from "node:stream";
-import * as WebDistribution from "./WebDistribution";
+import * as WebDistribution from "@/WebPanel/WebDistribution";
 
 import HTTP, { HTTPIncomingRequest, HTTPResponse } from "@/WebPanel/HTTP";
 import WS from "@/WebPanel/WS";

@@ -111,7 +111,7 @@ export interface HTTPFrame {
     toString(): string;
 }
 
-export class HTTPIncomingRequest implements HTTPFrame {
+class HTTPIncomingRequest implements HTTPFrame {
     public readonly route: string;
     public readonly searchParams: URLSearchParams;
     private _body: Uint8Array | null = null;
@@ -174,6 +174,7 @@ export class HTTPIncomingRequest implements HTTPFrame {
         return s;
     }
 }
+export type HTTPRequest = HTTPIncomingRequest;
 
 export type MIMETypes = "text/plain" | "text/html" | "text/css" | "text/csv" | "text/javascript" | "text/markdown" |
     "audio/mpeg" | "audio/wav" | "audio/webm" |

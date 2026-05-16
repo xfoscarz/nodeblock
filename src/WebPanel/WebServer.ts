@@ -7,21 +7,22 @@ import path from "node:path";
 import { EventEmitter } from "node:stream";
 import * as WebDistribution from "@/WebPanel/WebDistribution";
 
-import HTTP, { HTTPIncomingRequest, HTTPResponse } from "@/WebPanel/HTTP";
-import WS from "@/WebPanel/WS";
+import HTTP, { HTTPRequest, HTTPResponse } from "@/WebPanel/HTTP";
+import WS, { WebsocketConnection } from "@/WebPanel/WS";
 
 
 type WebServerOptions = {}
 
-type RouteHandler = (request: HTTPIncomingRequest, response: Response, next: () => void) => void;
+type RouteHandler = (request: HTTPRequest, response: Response, next: () => void) => void;
 export type WebConnectionHandler = (server: WebServer, socket: Socket) => void;
 
 interface WebServerEvents {
-    "route": [ HTTPIncomingRequest, Socket ];
+    "stop": [];
+
+    "route": [ HTTPRequest, Socket ];
     
-    "websocketmessage": [ Socket, Uint8Array | string ];
-    "websocketclose": [ Socket ];
-    "websocketopen": [ Socket ];
+    "websocketclose": [ WebsocketConnection ];
+    "websocketopen": [ WebsocketConnection ];
 }
 export default class WebServer extends EventEmitter<WebServerEvents> {
     public readonly server: net.Server;
@@ -119,8 +120,13 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         });
     }
 
-    public useDefaultWebPanel(): this {
-        this.use("/", (req, res, next) => {
+    public async stop(): Promise<void> {
+        this.emit("stop");
+        return new Promise(res => this.server.close(() => res()));
+    }
+
+    public useWebsocket(route: string): this {
+        this.use(route, (req, res, next) => {
             const { connection, upgrade, "sec-websocket-key": websocketKey } = req.headers;
 
             if (connection.toLowerCase() == "upgrade") {
@@ -141,11 +147,19 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
                 next();
             }
         });
+
         return this;
     }
 
-    public async stop(): Promise<void> {
-        return new Promise(res => this.server.close(() => res()));
+    public useDefaultWebPanel(): this {
+        this.useWebsocket("/");
+
+        this.on("websocketopen", connection => {
+            connection.on("message", async message => {
+                console.log(message);
+            });
+        });
+        return this;
     }
 }
 
@@ -162,7 +176,7 @@ export class Response extends HTTPResponse {
             console.warn("Response connection already ended");
         }
     }
-
+    
     public upgrade(payload: string | Uint8Array, newHandler: WebConnectionHandler): void;
     public upgrade(newHandler: WebConnectionHandler): void;
     public upgrade(newHandlerOrPayload: WebConnectionHandler | string | Uint8Array, newHandler?: WebConnectionHandler) {

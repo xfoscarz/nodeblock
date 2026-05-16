@@ -1,8 +1,10 @@
-import { getBitAt, getBitsAt } from "@shared/Util";
+import { getBitAt, getBitsAt, setBitArray } from "@shared/Util";
 import { HTTPResponse } from "@/WebPanel/HTTP";
-import { WebConnectionHandler } from "@/WebPanel/WebServer";
+import WebServer, { WebConnectionHandler } from "@/WebPanel/WebServer";
 import { hash } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { Socket } from "node:net";
+import crypto from "node:crypto";
 
 export const MAGIC_STRING = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 export const generateAccept = (key: string) => {
@@ -12,18 +14,24 @@ export const generateAccept = (key: string) => {
 const factory: (websocketKey: string) => WebConnectionHandler = (websocketKey) => {
     const handler: WebConnectionHandler = (server, socket) => {
         const handshakeResponse = buildHandshakeResponse(websocketKey);
+        const connection: WebsocketConnection = new Connection(server, socket);
         socket.write(handshakeResponse.payload);
-        server.emit("websocketopen", socket);
+        server.emit("websocketopen", connection);
 
         const builder = new WebsocketFrameBuilder(payload => {
-            server.emit("websocketmessage", socket, payload);
+            connection.emit("message", payload);
         });
 
-        builder.on("frame", frame => {
-            if (frame.opcode! == WebsocketFrameBuilder.OP_CODES.CLOSE) {
-                socket.end();
+        builder.on("control", frame => {
+            if (frame.opcode! == OP_CODES.CLOSE) {
+                let closeCode = frame.payloadLength >= 2 ? Buffer.from(frame.body).readUint16BE() : 1006;
+                connection.close(closeCode);
+            } else if (frame.opcode! == OP_CODES.PING) {
+                connection.send(WebsocketResponse.raw(true, OP_CODES.PONG, frame.rawBody));
             }
         });
+
+        builder.on("frame", frame => connection.emit("frame", frame));
 
         socket.on("data", chunk => {
             try {
@@ -32,37 +40,102 @@ const factory: (websocketKey: string) => WebConnectionHandler = (websocketKey) =
                 if (!(error instanceof WebsocketFrameError)) {
                     console.error(error);
                 }
+                connection.emit("error", error);
                 socket.end();
             }
         });
 
-        socket.on("close", () => {
-            console.log("Closed websocket connection");
-            server.emit("websocketclose", socket);
-            socket.end();
+        socket.on("close", () => socket.end());
+        socket.on("error", error => {
+            console.error(error);
+            connection.emit("error", error);
         });
-
-        socket.on("error", console.error);
+        server.on("stop", () => connection.close(1000, "Server closed"));
     }
 
     return handler;
 }
 
+type ConnectionEvents = {
+    "close": [{ code?: number, message?: string }];
+    "message": [ Uint8Array | string ];
+    "frame": [ BakedWebsocketFrame ];
+    "error": [ any ];
+}
+class Connection extends EventEmitter<ConnectionEvents> {
+    private _closed: boolean = false;
+
+    constructor(
+        public readonly server: WebServer,
+        public readonly socket: Socket
+    ) {
+        super();
+    }
+
+    public send(payload: string | Uint8Array | WebsocketResponse) {
+        if (payload instanceof WebsocketResponse) {
+            this.socket.write(payload.payload);
+        } else if (typeof payload === "string") {
+            this.socket.write(WebsocketResponse.text(payload).payload);
+        } else {
+            this.socket.write(WebsocketResponse.binary(payload).payload);
+        }
+    }
+
+    public async ping(timeout: number = 10_000): Promise<number> {
+        const stamp = Date.now();
+        const id = crypto.randomBytes(16);
+
+        this.send(WebsocketResponse.raw(true, OP_CODES.PING, id));
+
+        
+        return new Promise(res => {
+            const timeoutProcess = setTimeout(() => {
+                res(-1);
+                this.off("frame", resolver);
+            }, timeout);
+
+            const resolver = (frame: BakedWebsocketFrame) => {
+                if (frame.opcode != OP_CODES.PONG) return;
+                
+                const now = Date.now();
+                if (id.equals(frame.body)) {
+                    res(now - stamp);
+                    clearTimeout(timeoutProcess);
+                    this.off("frame", resolver);
+                }
+            }
+            
+            this.on("frame", resolver);
+        });
+
+    }
+
+    public close(code?: number, message?: string) {
+        if (this._closed) return;
+        this._closed = true;
+        this.socket.end(WebsocketResponse.close(code, message).payload);
+        this.server.emit("websocketclose", this);
+        this.removeAllListeners();
+    }
+}
+export type WebsocketConnection = Connection;
+
+export const OP_CODES = {
+    CONTINUATION: 0x0,
+    TEXT: 0x1,
+    BINARY: 0x2,
+    CLOSE: 0x8,
+    PING: 0x9,
+    PONG: 0xa,
+}
+
 type WebsocketFrameBuilderEvents = {
-    "frame": [ WebsocketFrame ],
-    "control": [ WebsocketFrame ]
+    "frame": [ BakedWebsocketFrame ],
+    "control": [ BakedWebsocketFrame ]
 }
 
 export class WebsocketFrameBuilder extends EventEmitter<WebsocketFrameBuilderEvents> {
-    public static readonly OP_CODES = {
-        CONTINUATION: 0x0,
-        TEXT: 0x1,
-        BINARY: 0x2,
-        CLOSE: 0x8,
-        PING: 0x9,
-        PONG: 0xa,
-    }
-
     private _frameBuffer!: WebsocketFrame;
     private _buffer: Buffer;
 
@@ -105,27 +178,34 @@ export class WebsocketFrameBuilder extends EventEmitter<WebsocketFrameBuilderEve
     }
 
     private get _isControl() {
-        return this._frameBuffer.opcode === WebsocketFrameBuilder.OP_CODES.PING ||
-            this._frameBuffer.opcode === WebsocketFrameBuilder.OP_CODES.PONG ||
-            this._frameBuffer.opcode === WebsocketFrameBuilder.OP_CODES.CLOSE;
+        return this._frameBuffer.opcode === OP_CODES.PING ||
+            this._frameBuffer.opcode === OP_CODES.PONG ||
+            this._frameBuffer.opcode === OP_CODES.CLOSE;
+    }
+
+    private _bakeFrame(frame: WebsocketFrame, rawBody: Uint8Array) {
+        return { ...frame, rawBody } as BakedWebsocketFrame;
     }
 
     private _processRawFrame() {
-        this.emit("frame", { ...this._frameBuffer });
+        const rawBody = Uint8Array.from(this._frameBuffer.body);
+
+        if (this._frameBuffer.mask) {
+            for (let i = 0; i < this._frameBuffer.body.length; i++) {
+                this._frameBuffer.body[i] ^= this._frameBuffer.maskingKey![i % 4];
+            }
+        }
+
+        const bakedFrame = this._bakeFrame(this._frameBuffer, rawBody);
+        this.emit("frame", bakedFrame);
 
         if (this._isControl) {
-            this.emit("control", { ...this._frameBuffer });
+            this.emit("control", bakedFrame);
         } else {
-            if (this._frameBuffer.mask) {
-                for (let i = 0; i < this._frameBuffer.body.length; i++) {
-                    this._frameBuffer.body[i] ^= this._frameBuffer.maskingKey![i % 4];
-                }
-            }
-    
             if (this._payloadType !== undefined) {
-                if (this._frameBuffer.opcode != WebsocketFrameBuilder.OP_CODES.CONTINUATION) throw new Error("Invalid websocket frame. Fragmentation expected continuation opcode.");
+                if (this._frameBuffer.opcode != OP_CODES.CONTINUATION) throw new Error("Invalid websocket frame. Fragmentation expected continuation opcode.");
             } else {
-                if (this._frameBuffer.opcode == WebsocketFrameBuilder.OP_CODES.CONTINUATION) throw new Error("Invalid websocket frame. Fragmentation expected payload type to be initialized first.");
+                if (this._frameBuffer.opcode == OP_CODES.CONTINUATION) throw new Error("Invalid websocket frame. Fragmentation expected payload type to be initialized first.");
                 this._payloadType = this._frameBuffer.opcode;
                 this._payloadBuffer = Buffer.alloc(0);
             }
@@ -133,7 +213,7 @@ export class WebsocketFrameBuilder extends EventEmitter<WebsocketFrameBuilderEve
             this._payloadBuffer = Buffer.concat([ this._payloadBuffer as Uint8Array, this._frameBuffer.body ]);
     
             if (this._frameBuffer.fin) {
-                if (this._payloadType === WebsocketFrameBuilder.OP_CODES.TEXT) {
+                if (this._payloadType === OP_CODES.TEXT) {
                     this.onbuild(Buffer.from(this._payloadBuffer!).toString("utf8"));
                 } else {
                     this.onbuild(this._payloadBuffer!);
@@ -227,7 +307,69 @@ export class WebsocketFrameBuilder extends EventEmitter<WebsocketFrameBuilderEve
 
 class WebsocketFrameError extends Error {}
 
-export type WebsocketFrame = {
+export class WebsocketResponse implements WebsocketFrame {
+    public rsv1: boolean = false;
+    public rsv2: boolean = false;
+    public rsv3: boolean = false;
+
+    public readonly mask: false = false;
+
+    private constructor(
+        public readonly fin: boolean,
+        public readonly opcode: number,
+        public readonly body: Uint8Array
+    ) {}
+
+    public get payloadLength() { return this.body.byteLength; }
+
+    public get payload(): Uint8Array {
+        let headerBytes = [
+            (setBitArray(this.fin, this.rsv1, this.rsv2, this.rsv3) << 4) + (this.opcode & 0b1111),
+        ];
+
+        let payloadSize = this.payloadLength;
+        let payloadBuffer: Buffer = Buffer.alloc(0);
+
+        if (payloadSize > 125) {
+            if (payloadSize <= 0xffff) {
+                payloadBuffer = Buffer.alloc(2);
+                payloadBuffer.writeUint16BE(payloadSize);
+                payloadSize = 126;
+            } else {
+                payloadBuffer = Buffer.alloc(8);
+                payloadBuffer.writeBigUint64BE(BigInt(payloadSize));
+                payloadSize = 127;
+            }
+        }
+
+        let maskAndPayloadSize = (this.mask ? 0b1000_0000 : 0) | payloadSize;
+        headerBytes.push(maskAndPayloadSize, ...payloadBuffer);
+
+        return Buffer.concat([ new Uint8Array(headerBytes), this.body ])
+    }
+
+    public static text(payload: string) {
+        return new WebsocketResponse(true, OP_CODES.TEXT, Buffer.from(payload));
+    }
+
+    public static binary(payload: Uint8Array) {
+        return new WebsocketResponse(true, OP_CODES.BINARY, payload);
+    }
+
+    public static close(code?: number, message?: string) {
+        const closePayload = Buffer.alloc(125);
+        closePayload.writeUint16BE(code || 0);
+        if ((message?.length || 0) > 123) console.warn("Close message cannot be greater than 123 bytes.");
+        closePayload.write(message || "", 2);
+        return new WebsocketResponse(true, OP_CODES.CLOSE, closePayload);
+    }
+
+    public static raw(fin: boolean, opcode: number, body: Uint8Array) {
+        return new WebsocketResponse(fin, opcode, body);
+    }
+}
+
+type WebsocketFrame = {
     fin: boolean;
     rsv1: boolean;
     rsv2: boolean;
@@ -241,6 +383,7 @@ export type WebsocketFrame = {
 
     body: Uint8Array;
 }
+export type BakedWebsocketFrame = Required<WebsocketFrame> & { rawBody: Uint8Array }
 
 function buildHandshakeResponse(websocketKey: string) {
     const handshakeResponse = new HTTPResponse(101, "Switching Protocols");

@@ -38,3 +38,7 @@ export function getBitsAt(data: number, ...indices: number[]): number[] {
 export function getBitAt(data: number, index: number) {
     return (data >> (index - 1)) & 1;
 }
+
+export function setBitArray(...bits: boolean[]) {
+    return bits.reduce((n, bit) => (n << 1) + (bit ? 1 : 0), 0);
+}

@@ -84,7 +84,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             if (this._ended) return;
             if (typeof chunk == "string") return this._cleanup();
 
-            this.server.monitor.incomingRaw(chunk);
+            this.server.monitor?.incomingRaw(this.server, chunk);
 
             if (this._state != ConnectionState.PLAY) {
                 printBuffer(chunk, "[Inc. Raw Data]: ");
@@ -115,7 +115,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         const reader = new BufferedReader(data);
         const packetID = await reader.readNextVarInt();
 
-        this.server.monitor.incomingPacket(size, packetID, reader.buffer);
+        this.server.monitor?.incomingPacket(this.server, size, packetID, reader.buffer);
 
         if (packetID != 0x1b) printBuffer(reader.buffer, `[Parsed ${this._state} Packet #0x${packetID} ${size}b]: `);
 
@@ -180,7 +180,6 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         if (packet instanceof ServerboundStatusRequestPacket) {
             const onlinePlayers = 0;
 
-            let faviconData = this.server.getFile("server-icon.png");
             let matchVersion = this.server.minecraftVersions.includes(this._protocolVersion);
 
             const data: StatusResponseData = {
@@ -193,9 +192,9 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                     "online": onlinePlayers,
                     "sample": []
                 },
-                "description": { "text": this.server.motd.centered ? LegacyText.centerMOTD(this.server.motd.text) : this.server.motd.text },
+                "description": { "text": this.server.motd },
                 "enforcesSecureChat": false,
-                "favicon": faviconData.length != 0 ? Buffer.from(faviconData).toString("base64") : ""
+                "favicon": this.server.favicon
             };
             await this.send(new ClientboundStatusResponsePacket(data));
         } else if (packet instanceof ServerboundPingRequestPacket) {
@@ -337,7 +336,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     }
 
     public async send(packet: ClientboundPacket): Promise<void> {
-        this.server.monitor.outgoingPacket(packet);
+        this.server.monitor?.outgoingPacket(this.server, packet);
         return new Promise(res => this._socket.write(packet.payload, () => res()));
     }
 
@@ -365,17 +364,10 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         Object.values(this._timeouts).forEach(clearTimeout);
     }
 
-    public get ended() {
-        return this._ended;
-    }
-
-    public get transfered() {
-        return this._transfered;
-    }
-
-    public get authenticated() {
-        return !!this._profile;
-    }
+    public get ended() { return this._ended; }
+    public get transfered() { return this._transfered; }
+    public get authenticated() { return !!this._profile; }
+    public get isPlay() { return this._state == ConnectionState.PLAY; }
 
     private _cleanup() {
         if (!this._socket.destroyed) this._socket.end();

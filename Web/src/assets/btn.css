@@ -1,0 +1,34 @@
+@utility btn-* {
+    cursor: pointer;
+    background: --value([color]);
+    background: --value(--color-*);
+    padding: 5px 15px;
+    transition: opacity 0.25s, background 0.5s, color 0.5s;
+    @apply text-sm;
+    @apply rounded-md;
+
+    &.loading {
+        position: relative;
+        opacity: 0.25;
+        cursor: progress;
+    }
+}
+
+@utility btn-icon-* {
+    cursor: pointer;
+    background: color-mix(in srgb, --value([color]) 20%, transparent);
+    background: color-mix(in srgb, --value(--color-*) 20%, transparent);
+    color: --value([color]);
+    color: --value(--color-*);
+    padding: 5px;
+    transition: opacity 0.25s, background 0.5s, color 0.5s;
+    @apply size-7;
+    @apply text-xs;
+    @apply rounded-md;
+
+    &.loading {
+        position: relative;
+        opacity: 0.25;
+        cursor: progress;
+    }
+}

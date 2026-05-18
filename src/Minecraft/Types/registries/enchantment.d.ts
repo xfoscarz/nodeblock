@@ -1,4 +1,4 @@
-import { IdentifierOrTag } from "../../../Util";
+import { IdentifierOrTag } from "../../../PortWatcher";
 import { TextComponent } from "../../Text";
 import { EffectComponent } from "../primitives/enchantment";
 import { VanillaEnchantments, VanillaEnchantmentTags } from "../vanilla/enchantments";

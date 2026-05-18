@@ -1,5 +1,5 @@
 {
     "ext": "ts,tsx",
-    "exec": "yarn build:server && cd dist && node --enable-source-maps --inspect index.js || exit 1",
-    "ignore": [ "*.barrel.ts", "*.auto.ts", "./test/*", "Web" ]
+    "exec": "yarn build:server && cd dist && node --trace-warnings --enable-source-maps --inspect index.js || exit 1",
+    "ignore": [ "*" ]
 }

@@ -1,4 +1,4 @@
-import { EnumString } from "@/Util";
+import { EnumString } from "@/PortWatcher";
 
 export type VanillaDamageTypes = EnumString<
     | "minecraft:arrow"

@@ -1,4 +1,4 @@
-import { ListOfAtLeastOne } from "../../../Util";
+import { ListOfAtLeastOne } from "../../../PortWatcher";
 import { TextComponent } from "../../Text";
 import { DialogAction, DialogBody, DialogInput } from "../primitives/dialog";
 import { VanillaDialogTypes } from "../vanilla/dialog";

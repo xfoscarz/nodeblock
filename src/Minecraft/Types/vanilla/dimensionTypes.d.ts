@@ -1,4 +1,4 @@
-import { EnumString } from "@/Util";
+import { EnumString } from "@/PortWatcher";
 
 export type VanillaVillagerAIs = EnumString<
     | "minecraft:core"

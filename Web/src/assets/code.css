@@ -1,0 +1,8 @@
+@utility code {
+    color: var(--color-secondary);
+    font-family: monospace;
+    border: 1px solid #5b5b5b;
+    padding: 2px 5px;
+    font-size: 0.75rem;
+    border-radius: 5px;
+}

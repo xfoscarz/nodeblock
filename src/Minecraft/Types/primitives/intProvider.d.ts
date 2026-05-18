@@ -1,4 +1,4 @@
-import { ListOfAtLeastOne } from "../../../Util";
+import { ListOfAtLeastOne } from "../../../PortWatcher";
 import { VanillaIntProviderTypes } from "../vanilla/intProviders";
 
 export type IntProvider = number | {

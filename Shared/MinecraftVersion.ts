@@ -1,4 +1,4 @@
-import { EnumString } from "@shared/Util";
+import type { EnumString } from "@shared/Util";
 
 export const Versions = Object.freeze({
     "26.1": 775,

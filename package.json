@@ -22,7 +22,7 @@
         "build": "yarn build:web && yarn build:transform && yarn build:server",
         "lint": "eslint",
         "postinstall": "yarn --cwd Web",
-        "start": "cd dist && node dist/index.js"
+        "start": "cd dist && node index.js"
     },
     "name": "nodeblock",
     "version": "1.0.0",

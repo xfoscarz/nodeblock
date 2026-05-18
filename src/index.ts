@@ -1,8 +1,10 @@
 import { LegacyText } from "@/Minecraft/Text";
-import Nodeblock from "@/Nodeblock";
+import { ServerState } from "@/Network/NodeblockServer";
+import { NodeblockServerGroup } from "@/Nodeblock";
 import { Versions } from "@shared/MinecraftVersion";
+import { wait } from "@shared/Util";
 
-const container = new Nodeblock.ServerContainer([{
+const container = new NodeblockServerGroup([{
     name: "main",
     port: 25565,
     minecraftVersions: [ Versions["1.21.11"] ],
@@ -22,4 +24,29 @@ container.addAndStart({
     }
 });
 
+const privateServer = container.addAndStart({
+    name: "private server",
+    port: 25577,
+    minecraftVersions: [ Versions["1.21.11"] ]
+});
+
+container.addAndStart({
+    name: "dev server",
+    port: 25578,
+    minecraftVersions: [ Versions["1.21.11"] ]
+})
+
+container.addAndStart({
+    name: "old combat",
+    port: 25579,
+    minecraftVersions: [ Versions["1.8.9"] ]
+})
+
+privateServer.on("statechange", state => {
+    if (state == ServerState.ONLINE) {
+        wait(1_000).then(() => privateServer.stop());
+    }
+})
+
 container.attachWeb(3000).useDefaultWebPanel();
+container.attachDefaultWebMonitor();

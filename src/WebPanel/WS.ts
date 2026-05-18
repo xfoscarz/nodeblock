@@ -45,12 +45,16 @@ const factory: (websocketKey: string) => WebConnectionHandler = (websocketKey) =
             }
         });
 
-        socket.on("close", () => socket.end());
+        socket.on("close", () => connection.close());
         socket.on("error", error => {
-            console.error(error);
+            if ("code" in error) {
+                if (error.code == "ECONNRESET") {
+                    connection.close();
+                    return;
+                }
+            }
             connection.emit("error", error);
         });
-        server.on("stop", () => connection.close(1000, "Server closed"));
     }
 
     return handler;
@@ -64,22 +68,34 @@ type ConnectionEvents = {
 }
 class Connection extends EventEmitter<ConnectionEvents> {
     private _closed: boolean = false;
+    private _closeHandler = () => this.close(1000, "Server closed");
+    private _broadcastHandler = (payload: Uint8Array | string | WebsocketResponse) => this.send(payload);
 
     constructor(
         public readonly server: WebServer,
         public readonly socket: Socket
     ) {
         super();
+        server.once("stop", this._closeHandler);
+        server.on("websocketbroadcast", this._broadcastHandler);
+    }
+
+    private _getPayload(payload: string | Uint8Array | WebsocketResponse) {
+        if (payload instanceof WebsocketResponse) {
+            return payload.payload;
+        } else if (typeof payload === "string") {
+            return WebsocketResponse.text(payload).payload;
+        } else {
+            return WebsocketResponse.binary(payload).payload;
+        }
     }
 
     public send(payload: string | Uint8Array | WebsocketResponse) {
-        if (payload instanceof WebsocketResponse) {
-            this.socket.write(payload.payload);
-        } else if (typeof payload === "string") {
-            this.socket.write(WebsocketResponse.text(payload).payload);
-        } else {
-            this.socket.write(WebsocketResponse.binary(payload).payload);
-        }
+        this.socket.write(this._getPayload(payload));
+    }
+
+    public broadcast(payload: string | Uint8Array | WebsocketResponse) {
+        this.server.websocketBroadcast(payload);
     }
 
     public async ping(timeout: number = 10_000): Promise<number> {
@@ -116,6 +132,8 @@ class Connection extends EventEmitter<ConnectionEvents> {
         this._closed = true;
         this.socket.end(WebsocketResponse.close(code, message).payload);
         this.server.emit("websocketclose", this);
+        this.server.off("stop", this._closeHandler);
+        this.server.off("websocketbroadcast", this._broadcastHandler);
         this.removeAllListeners();
     }
 }

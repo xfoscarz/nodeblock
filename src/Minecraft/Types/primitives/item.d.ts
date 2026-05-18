@@ -3,7 +3,7 @@ import { EnvironmentAttributes } from "@/Minecraft/Types/primitives/dimensionTyp
 import { TextComponent } from "@/Minecraft/Types/primitives/textComponent";
 import { VanillaDataComponentTypes, VanillaItems } from "@/Minecraft/Types/vanilla/items"
 import { VanillaTranslatables } from "@/Minecraft/Types/vanilla/textComponents";
-import { EnumString } from "@/Util";
+import { EnumString } from "@/PortWatcher";
 
 const tset: DataComponent = {}
 

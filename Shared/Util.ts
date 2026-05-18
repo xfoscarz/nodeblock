@@ -2,6 +2,7 @@ export type ListOfAtLeastOne<T> = [ T, ...T[] ];
 export type StringContaining<T extends string> = `${string}${T}${string}`;
 export type IdentifierOrTag<ID extends string, Tag extends string> = ID | Tag | (ID | ID[] | Tag)[];
 export type EnumString<T extends string> = (string & {}) | T;
+export type ListItem<T> = T extends (infer I)[] ? I : never;
 
 export function bigEndian(chunk: Iterable<number>, msb: boolean = false): bigint {
     const size = msb ? 7n : 8n;
@@ -13,14 +14,6 @@ export function bigEndian(chunk: Iterable<number>, msb: boolean = false): bigint
     }
 
     return value;
-}
-
-export function toBase64(value: string): string {
-    return Buffer.from(value, "binary").toString("base64");
-}
-
-export function fromBase64(value: string): string {
-    return Buffer.from(value, "base64").toString("binary");
 }
 
 export async function wait(millis: number): Promise<void> {
@@ -41,4 +34,9 @@ export function getBitAt(data: number, index: number) {
 
 export function setBitArray(...bits: boolean[]) {
     return bits.reduce((n, bit) => (n << 1) + (bit ? 1 : 0), 0);
+}
+
+export function isErrorCode(error: any, code: string): boolean {
+    if ("code" in error) return error["code"] == code;
+    return false;
 }

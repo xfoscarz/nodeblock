@@ -1,4 +1,4 @@
-import { IdentifierOrTag } from "../../../Util";
+import { IdentifierOrTag } from "../../../PortWatcher";
 import { VanillaAttributes } from "../vanilla/attributes";
 import { VanillaBlocks, VanillaBlockTags } from "../vanilla/blocks";
 import { VanillaDamageTypes } from "../vanilla/damageTypes";

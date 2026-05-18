@@ -1,7 +1,7 @@
 import { IntProvider } from "./intProvider";
 import { Noise } from "./noise";
 import { VanillaBlocks, VanillaBlockTags, VanillaBlockPredicateTypes, VanillaBlockStateProviderTypes, VanillaBlockStateProperties } from "../vanilla/blocks";
-import { IdentifierOrTag, ListOfAtLeastOne } from "../../../Util";
+import { IdentifierOrTag, ListOfAtLeastOne } from "../../../PortWatcher";
 import { VanillaNoises } from "../vanilla/noises";
 
 type BlockStateString<T extends string> = (string & {}) | T;

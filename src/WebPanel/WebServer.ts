@@ -1,14 +1,12 @@
-import net, { Socket } from "node:net";
 import { error, info } from "@/Debug";
+import net, { Socket } from "node:net";
 
-// @ts-ignore
-import { NodeblockMonitor } from "@/Network/NodeblockServer";
+import * as WebDistribution from "@/WebPanel/WebDistribution";
 import path from "node:path";
 import { EventEmitter } from "node:stream";
-import * as WebDistribution from "@/WebPanel/WebDistribution";
 
 import HTTP, { HTTPRequest, HTTPResponse } from "@/WebPanel/HTTP";
-import WS, { WebsocketConnection } from "@/WebPanel/WS";
+import WS, { WebsocketConnection, WebsocketResponse } from "@/WebPanel/WS";
 
 
 type WebServerOptions = {}
@@ -23,6 +21,7 @@ interface WebServerEvents {
     
     "websocketclose": [ WebsocketConnection ];
     "websocketopen": [ WebsocketConnection ];
+    "websocketbroadcast": [ Uint8Array | string | WebsocketResponse ];
 }
 export default class WebServer extends EventEmitter<WebServerEvents> {
     public readonly server: net.Server;
@@ -116,7 +115,7 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         this._started = true;
 
         this.server.listen(port, () => {
-            info(`Web server started on http://localhost:${port}`);
+            info(`[${process.pid}] Web server started on http://localhost:${port}`);
         });
     }
 
@@ -151,14 +150,12 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         return this;
     }
 
+    public websocketBroadcast(payload: Uint8Array | string | WebsocketResponse) {
+        this.emit("websocketbroadcast", payload);
+    }
+
     public useDefaultWebPanel(): this {
         this.useWebsocket("/");
-
-        this.on("websocketopen", connection => {
-            connection.on("message", async message => {
-                console.log(message);
-            });
-        });
         return this;
     }
 }
@@ -219,13 +216,5 @@ export class Response extends HTTPResponse {
         r.status = response.status;
         r.reasonPhrase = response.reasonPhrase;
         return r;
-    }
-}
-
-export class WebMonitor extends NodeblockMonitor {
-    private _webserver?: WebServer;
-
-    public attachServer(webserver: WebServer) {
-        this._webserver = webserver;
     }
 }

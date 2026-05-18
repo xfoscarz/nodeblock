@@ -1,5 +1,4 @@
 import { MojangAPI } from "@/Network/MojangAPI";
-import { toBase64 } from "@shared/Util";
 import UUID from "@/Minecraft/UUID";
 
 interface GameProfileProperties {
@@ -23,7 +22,7 @@ export default class GameProfile implements GameProfileProperties {
     ) {}
 
     public getBase64Data() {
-        return toBase64(JSON.stringify(this.textures));
+        return Buffer.from(JSON.stringify(this.textures)).toString("base64");
     }
 
     public static async fromUUID(uuid: UUID): Promise<GameProfile> {

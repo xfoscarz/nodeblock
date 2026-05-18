@@ -1,5 +1,4 @@
 import UUID from "@/Minecraft/UUID";
-import { fromBase64 } from "@shared/Util";
 import https from "node:https";
 
 export namespace MojangAPI {
@@ -67,7 +66,7 @@ export namespace MojangAPI {
                         reject(response.statusMessage);
                     } else {
                         const data = JSON.parse(buffer);
-                        data.properties = data.properties.map((property: { name: string, value: string }) => ({ name: property.name, value: JSON.parse(fromBase64(property.value)) }));
+                        data.properties = data.properties.map((property: { name: string, value: string }) => ({ name: property.name, value: JSON.parse(Buffer.from(property.value, "base64").toString()) }));
                         resolve(data);
                     }
                 });

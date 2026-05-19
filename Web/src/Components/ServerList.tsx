@@ -46,7 +46,7 @@ export function ServerList() {
         }) : prev);
     });
 
-    return <div className="overflow-scroll relative w-full h-full p-3">
+    return <div className="overflow-y-scroll relative w-full h-full py-2.5 scrollbar-gutter-both scrollbar-track-transparent scrollbar-thumb-secondary">
         <ul className={`flex flex-col gap-1 transition-opacity duration-500 ${serverList ? "opacity-100" : "opacity-0"}`}>{serverList ? serverList.map(entry => <ServerEntry key={entry.id} entry={entry}/>) : ""}</ul>
         <div className={`flex items-center pointer-events-none justify-center w-full h-full transition-opacity duration-500 absolute top-0 left-0 ${serverList ? "opacity-0" : "opacity-100"}`}>
             <span>Loading servers...</span>

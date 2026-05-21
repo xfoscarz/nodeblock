@@ -1,4 +1,3 @@
-import { error, info } from "@/Debug";
 import net, { Socket } from "node:net";
 
 import * as WebDistribution from "@/WebPanel/WebDistribution";
@@ -7,6 +6,7 @@ import { EventEmitter } from "node:stream";
 
 import HTTP, { HTTPRequest, HTTPResponse } from "@/WebPanel/HTTP";
 import WS, { WebsocketConnection, WebsocketResponse } from "@/WebPanel/WS";
+import { Log } from "@/Debug";
 
 
 type WebServerOptions = {}
@@ -35,7 +35,7 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         this.server = new net.Server();
 
         this.server.on("connection", socket => HTTP(this, socket));
-        this.server.on("error", (err) => error(err));
+        this.server.on("error", (err) => Log.error(err));
 
         this.on("route", (request, socket) => {
             const route = request.route;
@@ -115,7 +115,7 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         this._started = true;
 
         this.server.listen(port, () => {
-            info(`[${process.pid}] Web server started on http://localhost:${port}`);
+            Log.info(`Web server started on http://localhost:${port}`);
         });
     }
 

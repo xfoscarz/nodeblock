@@ -1,4 +1,4 @@
-import { info } from "@/Debug";
+import { Log } from "@/Debug";
 import { Identifier } from "@/Minecraft/Identifier";
 import { LegacyText } from "@/Minecraft/Text";
 import UUID from "@/Minecraft/UUID";
@@ -92,7 +92,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
         const difference = length - this.connections.size;
 
         if (difference > 0) {
-            info(`Cleaned up ${difference} stale connections.`);
+            Log.info(`Cleaned up ${difference} stale connections.`);
         }
     }
 
@@ -117,10 +117,10 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
             await this._deinitialize();
         } catch (error) {
             this.server.close();
-            console.error(error);
+            Log.error(error);
         }
         this._setState(ServerState.OFFLINE);
-        console.log(`[${process.pid}] Stopped minecraft server on ${this.port}`);
+        Log.info(`Stopped minecraft server on ${this.port}`);
     }
 
     public start() {
@@ -133,7 +133,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
             this._initialize().then(() => this._setState(ServerState.ONLINE));
         } catch (error) {
             this._setState(ServerState.OFFLINE);
-            console.error(error);
+            Log.error(error);
         }
     }
 
@@ -161,7 +161,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
     protected async _initialize() {
         await new Promise<void>(res => this.server.listen(this.port, () => res()));
         
-        info(`[${process.pid}] Minecraft server started on ${this.port}`);
+        Log.info(`Minecraft server started on ${this.port}`);
         
         this._connectionGC = setInterval(() => {
             this._cleanupConnections();
@@ -221,11 +221,11 @@ export class ConfigurationFolder {
         } catch (error) {
             if (isErrorCode(error, "ENOENT")) {
                 if (!(filePath in this._erroredCache)) {
-                    console.log(`File not found: ${fullPath}`);
+                    Log.warn(`File not found: ${fullPath}`);
                     this._erroredCache[filePath] = true;
                 }
             } else {
-                console.error(error);
+                Log.error(error);
             }
             return new Uint8Array();
         }

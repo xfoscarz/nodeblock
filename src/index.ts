@@ -33,6 +33,7 @@ const privateServer = container.addAndStart({
 container.addAndStart({
     name: "dev server",
     port: 25578,
+    softwareName: "nodepixel",
     minecraftVersions: [ Versions["1.21.11"] ]
 })
 
@@ -44,7 +45,7 @@ container.addAndStart({
 
 privateServer.on("statechange", state => {
     if (state == ServerState.ONLINE) {
-        wait(1_000).then(() => privateServer.stop());
+        wait(2_000).then(() => privateServer.stop());
     }
 })
 

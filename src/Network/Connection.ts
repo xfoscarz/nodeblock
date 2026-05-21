@@ -1,8 +1,10 @@
-import { info, printBuffer } from "@/Debug";
+import { Log, printBuffer } from "@/Debug";
+import { UnknownPacketError } from "@/Errors";
 import GameProfile from "@/Minecraft/GameProfile";
 import { Identifier } from "@/Minecraft/Identifier";
 import { BufferedReader } from "@/Network/BufferedIO";
 import Client from "@/Network/Client";
+import { NodeblockServer, ServerMode } from "@/Network/NodeblockServer";
 import { ClientboundPacket, ServerboundPacket } from "@/Network/Packet";
 import {
     ClientboundDisconnectConfigurationPacket,
@@ -25,15 +27,12 @@ import {
     ServerboundPluginMessagePacket,
     ServerboundStatusRequestPacket
 } from "@/Network/Packets.barrel";
+import ClientboundStatusResponsePacket, { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
 import { HandshakeIntent } from "@/Network/Packets/Serverbound/ServerboundHandshakePacket";
-import { NodeblockServer, ServerMode } from "@/Network/NodeblockServer";
 import { Configuration, Handshaking, Login, Play, Status } from "@/Network/States.barrel";
 import EventEmitter from "node:events";
 import { Socket } from "node:net";
 import { v4 } from "uuid";
-import ClientboundStatusResponsePacket, { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
-import { LegacyText } from "@/Minecraft/Text";
-import { UnknownPacketError } from "@/Errors";
 
 interface ConnectionEvents {
     "login": [];
@@ -74,7 +73,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         this.uuid = v4();
         this.encrypted = server.mode != ServerMode.OFFLINE;
 
-        info(`New connection { ${this.uuid} }`);
+        Log.info(`New connection { ${this.uuid} }`);
 
         this._initializeHandlers();
     }
@@ -97,14 +96,12 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             }
         });
 
-        this._socket.on("error", error => {
-            console.error(error);
-        });
+        this._socket.on("error", error => Log.error(error));
 
         this._socket.on("close", () => {
             this._ended = true;
             this._cleanup();
-            info(`Connection { ${this.uuid} } closed`);
+            Log.info(`Connection { ${this.uuid} } closed`);
         });
     }
 
@@ -148,7 +145,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             if (error instanceof UnknownPacketError) {
                 await this.disconnect(`Unknown packet format: 0x${packetID.toString(16)}`);
             } else {
-                console.error(error);
+                Log.error(error);
                 await this.disconnect(`Internal Server Error:\n\n${error}`);
             }
         }

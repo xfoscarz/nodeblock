@@ -11,5 +11,11 @@
     <body style="background: #000000;">
         <div id="root"></div>
         <script type="module" src="/src/main.tsx"></script>
+
+        <script>
+            if (location.hostname == "127.0.0.1") {
+                location.href = "http://localhost:5173";
+            }
+        </script>
     </body>
 </html>

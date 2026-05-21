@@ -1,0 +1,18 @@
+@theme {
+    --animate-alert-in-right: alert-in-right 1s forwards;
+
+    @keyframes alert-in-right {
+        0% {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        25%, 90% {
+            opacity: 1;
+            transform: translateX(0%);
+        }
+        100% {
+            opacity: 0;
+            transform: translateX(20%);
+        }
+    }
+}

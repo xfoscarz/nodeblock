@@ -743,11 +743,26 @@ export const Versions = Object.freeze({
 type ValidVersionStrings = keyof typeof Versions;
 export type MinecraftVersionStrings = EnumString<ValidVersionStrings>;
 
-export function getFromProtocol(protocol: number): MinecraftVersionStrings | null {
+const cleanVersionStringMatcher = new RegExp(/^\d+\.\d+(\.\d+)?$/);
+export function isCleanVersionsString(versionString: string): boolean {
+    return cleanVersionStringMatcher.test(versionString);
+}
+
+export function protocolToVersionRange(protocol: number): [ string, string ] | string | null {
+    const pair: [ string, string ] = [ "", "" ];
     for (const version in Versions) {
-        if (Versions[version as ValidVersionStrings] == protocol) {
-            return version;
+        if (pair[1]) {
+            if (Versions[version as ValidVersionStrings] !== protocol) {
+                if (pair[0]) return pair;
+                else return pair[1];
+            } else {
+                if (isCleanVersionsString(version)) pair[0] = version;
+            }
+        } else if (Versions[version as ValidVersionStrings] == protocol) {
+            pair[1] = version;
         }
     }
     return null;
 }
+
+export const LATEST_VERSION = Object.values(Versions)[0];

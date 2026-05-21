@@ -5,6 +5,7 @@ import { hash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { Socket } from "node:net";
 import crypto from "node:crypto";
+import { Log } from "@/Debug";
 
 export const MAGIC_STRING = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 export const generateAccept = (key: string) => {
@@ -38,7 +39,7 @@ const factory: (websocketKey: string) => WebConnectionHandler = (websocketKey) =
                 builder.write(chunk);
             } catch (error) {
                 if (!(error instanceof WebsocketFrameError)) {
-                    console.error(error);
+                    Log.error(error);
                 }
                 connection.emit("error", error);
                 socket.end();

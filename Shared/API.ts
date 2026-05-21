@@ -26,7 +26,9 @@ interface RequestData {
             "page": number
         }
     }
-    [API.Type.StateChange]: {};
+    [API.Type.StateChange]: {
+        "id": string;
+    }
 }
 
 interface ResponseData {
@@ -39,8 +41,9 @@ interface ResponseData {
             "state": string;
             "players": [ number, number ];
             "port": number;
-            "motd"?: string;
             "favicon"?: string;
+            "protocols": number[];
+            "software": string;
         }[],
         "pagination"?: {
             "pages": number;

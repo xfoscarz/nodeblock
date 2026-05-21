@@ -27,7 +27,6 @@
     @apply rounded-md;
 
     &.loading {
-        position: relative;
         opacity: 0.25;
         cursor: progress;
     }

@@ -7,6 +7,14 @@ import "@/assets/font-awesome/css/fontawesome.css";
 import "@/assets/font-awesome/css/all.min.css";
 import "@/assets/base.css";
 
+import "react";
+
+declare module "react" {
+    interface CSSProperties {
+        [customCSSVariable: `--${string}`]: string | number
+    }
+}
+
 document.body.style = "";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

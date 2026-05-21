@@ -1,6 +1,6 @@
 @font-face {
     font-family: "Outfit";
-    src: url("/Outfit-VariableFont_wght.ttf");
+    src: url("/fonts/Outfit-VariableFont_wght.ttf");
 }
 
 @import "tailwindcss";
@@ -8,6 +8,7 @@
 @import "./btn.css";
 @import "./chip.css";
 @import "./code.css";
+@import "./alert.css";
 
 @theme {
     --color-bg: rgb(33, 33, 37);
@@ -15,7 +16,7 @@
 
     --color-bg-primary: rgb(46, 46, 52);
     --color-bg-secondary: rgb(33, 33, 37);
-    --color-bg-hint: rgb(36, 36, 41);
+    --color-bg-hint: rgb(30, 30, 37);
 
     --color-primary: rgb(217, 217, 224);
     --color-secondary: rgb(183, 183, 196);
@@ -25,6 +26,8 @@
     --color-severe: rgb(255, 55, 55);
     --color-warn: rgb(255, 156, 58);
     --color-safe: rgb(0, 210, 0);
+
+    /* --color-brand-primary: rgb(15, 138, 221); */
 }
 
 :root {

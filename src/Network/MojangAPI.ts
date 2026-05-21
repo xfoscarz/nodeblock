@@ -1,3 +1,4 @@
+import { Log } from "@/Debug";
 import UUID from "@/Minecraft/UUID";
 import https from "node:https";
 
@@ -22,7 +23,7 @@ export namespace MojangAPI {
                 });
 
                 response.on("error", error => {
-                    console.log(error);
+                    Log.error(error);
                     reject("Authentication servers are currently down. Please try again later.");
                 });
             });
@@ -72,7 +73,7 @@ export namespace MojangAPI {
                 });
 
                 response.on("error", error => {
-                    console.log(error);
+                    Log.error(error);
                     reject("Authentication servers are currently down. Please try again later.");
                 });
             });

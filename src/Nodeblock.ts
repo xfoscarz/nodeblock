@@ -1,12 +1,14 @@
-import { NodeblockServer, ServerOptions, ServerState } from "@/Network/NodeblockServer";
+import { Log } from "@/Debug";
+import { NodeblockServer, ServerOptions } from "@/Network/NodeblockServer";
 import { ClientboundPacket } from "@/Network/Packet";
 import { PortWatcher } from "@/PortWatcher";
+import ServerListHandler from "@/WebPanel/WebMonitorHandlers/ServerListHandler";
+import ServerStateHandler from "@/WebPanel/WebMonitorHandlers/ServerStateHandler";
 import WebServer from "@/WebPanel/WebServer";
 import { API, UnknownAPIDataTypeError } from "@shared/API";
-import { ListItem } from "@shared/Util";
 
+export type ServerEntry = { server: NodeblockServer, name: string };
 type ContainerizedServerOptions = ServerOptions & { name: string, port: number, folderName?: string };
-type ServerEntry = { server: NodeblockServer, name: string };
 
 export class NodeblockServerGroup {
     private _servers: Record<string, ServerEntry> = {};
@@ -23,12 +25,13 @@ export class NodeblockServerGroup {
                 const entries = Object.values(this._servers);
 
                 if (entries.length !== 0) {
-                    console.log(`[${process.pid}] Stopping ${entries.length} nodeblock instances`);
+                    Log.info(`Stopping ${entries.length} nodeblock instances`);
                     await Promise.all(entries.map(entry => entry.server.stop()));
                 }
 
                 if (this._webServer) {
-                    console.log(`[${process.pid}] Stopping webserver`);
+                    Log.info("Stopping webserver");
+                    // BUG not stopping
                     await this._webServer.stop();
                 }
 
@@ -43,10 +46,10 @@ export class NodeblockServerGroup {
         if (await portWatcher.check()) {
             starter();
         } else {
-            console.log(`Waiting for port :${port} availability...`);
+            Log.warn(`Waiting for port :${port} availability...`);
             await portWatcher.waitForFree()
                 .then(() => starter())
-                .catch(() => console.error(`Couldn't start server on :${port}, port in use`));
+                .catch(() => Log.error(`Couldn't start server on :${port}, port in use`));
         }
     }
 
@@ -93,6 +96,8 @@ export class NodeblockServerGroup {
     }
     public startAll() { this.startIf(() => true); }
 
+    public get(id: string): ServerEntry | undefined { return this._servers[id]; }
+
     public get servers() { return Object.values(this._servers); }
 }
 
@@ -106,6 +111,8 @@ export abstract class ServerGroupMonitor {
     public abstract outgoingPacket(server: NodeblockServer, packet: ClientboundPacket): void;
     public abstract incomingPacket(server: NodeblockServer, size: number, packetID: number, data: Uint8Array): void;
 }
+
+export type WebMonitorRequestHandler = (req: API.Request<API.Type.ServerList>, group: NodeblockServerGroup) => API.Response<any> | null;
 
 export class WebMonitor extends ServerGroupMonitor {
     constructor(
@@ -121,96 +128,33 @@ export class WebMonitor extends ServerGroupMonitor {
                     if (typeof message !== "string") throw new Error();
                     request = JSON.parse(message);
                 } catch (error) {
-                    console.error(error);
+                    Log.error(error);
                     connection.close(1006, "Abnormal payload");
                     return;
                 }
 
                 this._handleRequest(request).then(response => {
+                    if (!response) return;
                     connection.send(JSON.stringify(response));
                 }).catch(error => {
                     if (error instanceof UnknownAPIDataTypeError) {
                         connection.close(1006, "Unknown datatype: " + request.datatype);
                     } else {
-                        console.error(error);
+                        Log.error(error);
                     }
                 });
             });
 
-            connection.on("error", console.error);
+            connection.on("error", Log.error);
         });
     }
 
-    private async _handleRequest(req: API.Request<API.Type>): Promise<API.Response<API.Type>> {
+    private async _handleRequest(req: API.Request<API.Type>): Promise<API.Response<API.Type> | null> {
         switch (req.datatype) {
-            case API.Type.ServerList: {
-                const request = req as API.Request<API.Type.ServerList>;
-                let response: API.Response<API.Type.ServerList>["data"] = {
-                    "servers": []
-                }
-                const mapper: (entry: ServerEntry) => ListItem<API.Response<API.Type.ServerList>["data"]["servers"]> = ({ name, server }) => ({
-                    "id": server.id.toString(),
-                    "name": name,
-                    "state": server.state,
-                    "players": [ server.playerCount, server.maxPlayers ],
-                    "port": server.port,
-                    "favicon": server.favicon,
-                    "motd": server.motd
-                });
-
-                const sortBy = "name" as "name" | "id" | "port" | "state" | "players";
-                const orderBy = "asc" as "asc" | "desc";
-
-                const sorted = [ ...this.group.servers ];
-
-                switch (sortBy) {
-                    case "name": {
-                        sorted.sort((a, b) => a.name.localeCompare(b.name));
-                        break;
-                    }
-                    case "id": {
-                        sorted.sort((a, b) => a.server.id.toString(false).localeCompare(b.server.id.toString(false)));
-                        break;
-                    }
-                    case "players": {
-                        sorted.sort((a, b) => (a.server.playerCount - b.server.playerCount) || (a.server.maxPlayers - b.server.maxPlayers));
-                        break;
-                    }
-                    case "port": {
-                        sorted.sort((a, b) => a.server.port - b.server.port);
-                        break;
-                    }
-                    case "state": {
-                        const stateWeight = {
-                            [ServerState.OFFLINE]: 0,
-                            [ServerState.STOPPING]: 1,
-                            [ServerState.STARTING]: 2,
-                            [ServerState.ONLINE]: 3
-                        };
-                        sorted.sort((a, b) => stateWeight[a.server.state] - stateWeight[b.server.state]);
-                        break;
-                    }
-                }
-                
-                if (orderBy == "desc") sorted.reverse();
-
-                if (request.data.pagination) {
-                    let { count, page } = request.data.pagination;
-
-                    page = Math.max(0, page);
-
-                    if ((count * page) > sorted.length) {
-                        response.servers = [];
-                    } else {
-                        response.servers = sorted.slice(count * page, count * page + count).map(mapper);
-                    }
-                    response.pagination = { pages: Math.ceil(sorted.length / count) }
-                } else {
-                    response.servers = sorted.map(mapper);
-                    response.pagination = { pages: 1 }
-                }
-                return { "datatype": API.Type.ServerList, "data": response, "success": true };
-            }
+            case API.Type.ServerList:
+                return ServerListHandler(req as any, this.group);
+            case API.Type.StateChange:
+                return ServerStateHandler(req as any, this.group);
             default: {
                 throw new UnknownAPIDataTypeError();
             }

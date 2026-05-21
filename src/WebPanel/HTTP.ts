@@ -1,6 +1,7 @@
 
 import { capitalize } from "@shared/Util";
 import { WebConnectionHandler } from "@/WebPanel/WebServer";
+import { Log } from "@/Debug";
 
 const handler: WebConnectionHandler = (server, socket) => {
     const builder = new HTTPIncomingRequestBuilder(request => {
@@ -15,7 +16,7 @@ const handler: WebConnectionHandler = (server, socket) => {
     socket.on("data", chunk => builder.write(chunk));
 
     socket.on("error", (err) => {
-        console.error(err);
+        Log.error(err);
         socket.destroy();
     });
 

@@ -1,6 +1,6 @@
 import { ClientboundPacket } from "@/Network/Packet";
 
-export default class ClientboundDisconnectLoginPacket extends ClientboundPacket {
+export default class ClientboundLoginDisconnectPacket extends ClientboundPacket {
     constructor(
         public reason: string // BUG no text component for now
     ) {

@@ -27,12 +27,11 @@ export abstract class ClientboundPacket extends BufferedWriter implements Packet
         this.writeVarInt(this.packetID);
         this.write();
 
-        const data = this._buffer;
-        this._buffer = [];
+        const data = this.buffer;
+        this._buffers = [];
         this._writeVarInt(data.length);
-        this._buffer.push(...data);
 
-        this._payload = new Uint8Array(this._buffer);
+        this._payload = Buffer.concat([...this._buffers, data]);
         return this._payload;
     }
 }

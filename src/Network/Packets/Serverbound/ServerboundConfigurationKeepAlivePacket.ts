@@ -1,6 +1,6 @@
 import { ServerboundPacket } from "@/Network/Packet";
 
-export default class ServerboundKeepAliveConfigurationPacket extends ServerboundPacket {
+export default class ServerboundConfigurationKeepAlivePacket extends ServerboundPacket {
     constructor(
         public keepAliveID: bigint
     ) {

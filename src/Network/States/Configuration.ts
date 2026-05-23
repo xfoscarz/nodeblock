@@ -1,9 +1,9 @@
 import { BufferedReader } from "@/Network/BufferedIO";
 import {
-    ServerboundAcknowledgeFinishConfigurationPacket,
     ServerboundClientInformationPacket,
-    ServerboundKeepAliveConfigurationPacket,
-    ServerboundPluginMessagePacket
+    ServerboundCustomPayloadPacket,
+    ServerboundFinishConfigurationPacket,
+    ServerboundConfigurationKeepAlivePacket,
 } from "@/Network/Packets.barrel";
 import { ServerboundPacket } from "@/Network/Packet";
 import { UnknownPacketError } from "@/Errors";
@@ -35,12 +35,12 @@ export default abstract class Configuration {
             case 0x2: // SERVERBOUND_PLUGIN_MESSAGE
                 const identifier = await reader.readNextIdentifier();
                 const data = await reader.readAllBytes();
-                return new ServerboundPluginMessagePacket(identifier, data);
+                return new ServerboundCustomPayloadPacket(identifier, data);
             case 0x3: // ACKNOWLEDGE_FINISH_CONFIGURATION
-                return new ServerboundAcknowledgeFinishConfigurationPacket();
+                return new ServerboundFinishConfigurationPacket();
             case 0x4: // SERVERBOUND_KEEP_ALIVE
                 const keepAliveID = await reader.readNextLong();
-                return new ServerboundKeepAliveConfigurationPacket(keepAliveID);
+                return new ServerboundConfigurationKeepAlivePacket(keepAliveID);
         }
         throw new UnknownPacketError();
     }

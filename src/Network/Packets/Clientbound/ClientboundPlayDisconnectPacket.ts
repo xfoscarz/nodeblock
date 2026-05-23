@@ -1,16 +1,16 @@
 import { NBT } from "@/Minecraft/NBT";
 import { ClientboundPacket } from "@/Network/Packet";
 
-export default class ClientboundDisconnectConfigurationPacket extends ClientboundPacket {
+export default class ClientboundPlayDisconnectPacket extends ClientboundPacket {
     constructor(
-        public reason: string // BUG no text component for now
+        public reason: string
     ) {
-        super(0x2);
+        super(0x20);
     }
 
     public override write(): void {
         const data = NBT.compound({
-            "text": NBT.string("red"),
+            "text": NBT.string(this.reason),
             "color": NBT.string("red")
         });
         this.writeNBT(data);

@@ -1,6 +1,6 @@
 import { ServerboundPacket } from "@/Network/Packet";
 
-export default class ServerboundAcknowledgeFinishConfigurationPacket extends ServerboundPacket {
+export default class ServerboundFinishConfigurationPacket extends ServerboundPacket {
     constructor() {
         super(0x3);
     }

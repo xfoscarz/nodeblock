@@ -2,7 +2,7 @@ import { UnknownPacketError } from "@/Errors";
 import { BufferedReader } from "@/Network/BufferedIO";
 import { ServerboundPacket } from "@/Network/Packet";
 import {
-    ServerboundPingRequestPacket,
+    ServerboundStatusPingRequestPacket,
     ServerboundStatusRequestPacket
 } from "@/Network/Packets.barrel";
 
@@ -13,7 +13,7 @@ export default abstract class Status {
                 return new ServerboundStatusRequestPacket();
             case 0x1: // PING_REQUEST
                 const timestamp = await reader.readNextLong();
-                return new ServerboundPingRequestPacket(timestamp);
+                return new ServerboundStatusPingRequestPacket(timestamp);
         }
 
         throw new UnknownPacketError();

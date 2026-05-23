@@ -6,7 +6,7 @@ export enum HandshakeIntent {
     TRANSFER = 3
 }
 
-export default class ServerboundHandshakePacket extends ServerboundPacket {
+export default class ServerboundIntentionPacket extends ServerboundPacket {
     constructor(
         public protocolVersion: number,
         public serverAddress: string,

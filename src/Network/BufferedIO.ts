@@ -5,14 +5,15 @@ import UUID from "@/Minecraft/UUID";
 import { bigEndian } from "@shared/Util";
 import EventEmitter from "node:events";
 
-export class BufferedReader {
+export class BufferedReader extends EventEmitter {
     private _buffer: number[] = [];
-    private _emitter: EventEmitter = new EventEmitter();
 
     constructor(initialData: Iterable<number> = []) {
+        super();
+
         this._buffer.push(...initialData);
         if (this.readable) {
-            this._emitter.emit("data");
+            this.emit("data");
         }
     }
 
@@ -20,7 +21,7 @@ export class BufferedReader {
         for (const byte of data) {
             this._buffer.push(byte);
         }
-        this._emitter.emit("data");
+        this.emit("data");
     }
 
     // BUG: Optimize with Buffer read methods (written in C++ so faster)
@@ -177,7 +178,7 @@ export class BufferedReader {
         return new Uint8Array(buffer);
     }
 
-    public async waitForBytes(count: number): Promise<Uint8Array> {
+    public async waitForBytes(count: number, timeout = 10_000): Promise<Uint8Array> {
         const buffer: number[] = [];
 
         while (buffer.length < count) {
@@ -185,7 +186,14 @@ export class BufferedReader {
                 const take = Math.min(this._buffer.length, count - buffer.length);
                 buffer.push(...this._buffer.splice(0, take));
             } else {
-                await new Promise(res => this._emitter.once("data", res));
+                await new Promise((res, rej) => {
+                    setTimeout(() => {
+                        this.off("data", res);
+                        rej(new BufferedReaderTimeoutError());
+                    }, timeout);
+
+                    this.once("data", res);
+                });
             }
         }
 
@@ -195,7 +203,7 @@ export class BufferedReader {
     public async waitForByte(): Promise<number> {
         return new Promise(res => {
             if (this._buffer.length == 0) {
-                this._emitter.once("data", () => {
+                this.once("data", () => {
                     res(this._buffer.shift()!);
                 });
             } else {
@@ -215,17 +223,31 @@ export class BufferedReader {
     public get buffer(): Uint8Array {
         return new Uint8Array(this._buffer);
     }
+
+    public close() {
+        this.removeAllListeners();
+    }
+
+    public [Symbol.dispose]() {
+        this.close();
+    }
 }
 
+export class BufferedReaderTimeoutError extends Error {}
+
 export class BufferedWriter {
-    protected _buffer: number[] = [];
+    protected _buffers: Uint8Array[] = [];
+
+    public writeBytes(bytes: Uint8Array) {
+        this._buffers.push(bytes);
+    }
 
     public writeBoolean(value: boolean) {
-        this._buffer.push(value ? 1 : 0);
+        this._buffers.push(Uint8Array.of(value ? 1 : 0));
     }
 
     public writeByte(value: number) {
-        this._buffer.push(value & 0b1111_1111);
+        this._buffers.push(Uint8Array.of(value & 0b1111_1111));
     }
 
     public writeLong(value: bigint | number) {
@@ -235,13 +257,13 @@ export class BufferedWriter {
 
         const buffer = Buffer.alloc(8);
         buffer.writeBigInt64BE(value);
-        this._buffer.push(...buffer);
+        this._buffers.push(buffer);
     }
 
     public writeString(value: string): this {
         const buffer = Buffer.from(value, "utf8");
         this._writeVarInt(buffer.length);
-        this._buffer.push(...buffer);
+        this._buffers.push(buffer);
         return this;
     }
 
@@ -256,14 +278,12 @@ export class BufferedWriter {
     }
 
     public writeNBT(value: NBT.Compound): this {
-        const array: number[] = [];
-        value.getBytes(true, { buffer: array, offset: 0 });
-        this._buffer = this._buffer.concat(array);
+        this._buffers.push(value.getBytes(true));
         return this;
     }
 
     public writeUUID(uuid: UUID): this {
-        this._buffer.push(...uuid.buffer);
+        this._buffers.push(uuid.buffer);
         return this;
     }
 
@@ -294,7 +314,7 @@ export class BufferedWriter {
 
     protected _writeVarInt(value: number) {
         if (value == 0) {
-            this._buffer.push(0b0);
+            this._buffers.push(Uint8Array.of(0b0));
         } else {
             const buffer: number[] = [];
             while (value != 0) {
@@ -302,11 +322,11 @@ export class BufferedWriter {
                 value >>= 7;
             }
             buffer[buffer.length - 1] = buffer[buffer.length - 1] & 0b0111_1111
-            this._buffer.push(...buffer);
+            this._buffers.push(new Uint8Array(buffer));
         }
     }
 
     public get buffer() {
-        return new Uint8Array(this._buffer);
+        return Buffer.concat(this._buffers);
     }
 }

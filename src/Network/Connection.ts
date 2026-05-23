@@ -2,33 +2,34 @@ import { Log, printBuffer } from "@/Debug";
 import { UnknownPacketError } from "@/Errors";
 import GameProfile from "@/Minecraft/GameProfile";
 import { Identifier } from "@/Minecraft/Identifier";
-import { BufferedReader } from "@/Network/BufferedIO";
+import { BufferedReader, BufferedReaderTimeoutError } from "@/Network/BufferedIO";
 import Client from "@/Network/Client";
 import { NodeblockServer, ServerMode } from "@/Network/NodeblockServer";
 import { ClientboundPacket, ServerboundPacket } from "@/Network/Packet";
 import {
-    ClientboundDisconnectConfigurationPacket,
-    ClientboundDisconnectLoginPacket,
-    ClientboundDisconnectPlayPacket,
-    ClientboundFeatureFlagsPacket,
+    ClientboundConfigurationDisconnectPacket,
+    ClientboundConfigurationKeepAlivePacket,
     ClientboundFinishConfigurationPacket,
-    ClientboundKeepAliveConfigurationPacket,
-    ClientboundKeepAlivePlayPacket,
-    ClientboundLoginSuccessPacket,
+    ClientboundLoginDisconnectPacket,
+    ClientboundLoginFinishedPacket,
+    ClientboundPlayDisconnectPacket,
+    ClientboundPlayKeepAlivePacket,
     ClientboundPongResponsePacket,
-    ServerboundAcknowledgeFinishConfigurationPacket,
+    ClientboundUpdateEnabledFeaturesPacket,
     ServerboundClientInformationPacket,
-    ServerboundHandshakePacket,
-    ServerboundKeepAliveConfigurationPacket,
-    ServerboundKeepAlivePlayPacket,
+    ServerboundCustomPayloadPacket,
+    ServerboundFinishConfigurationPacket,
+    ServerboundIntentionPacket,
+    ServerboundHelloPacket,
+    ServerboundConfigurationKeepAlivePacket,
+    ServerboundPlayKeepAlivePacket,
     ServerboundLoginAcknowledgedPacket,
-    ServerboundLoginStartPacket,
-    ServerboundPingRequestPacket,
-    ServerboundPluginMessagePacket,
-    ServerboundStatusRequestPacket
+    ServerboundStatusPingRequestPacket,
+    ServerboundStatusRequestPacket,
+    ClientboundCustomPayloadPacket
 } from "@/Network/Packets.barrel";
 import ClientboundStatusResponsePacket, { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
-import { HandshakeIntent } from "@/Network/Packets/Serverbound/ServerboundHandshakePacket";
+import { HandshakeIntent } from "@/Network/Packets/Serverbound/ServerboundIntentionPacket";
 import { Configuration, Handshaking, Login, Play, Status } from "@/Network/States.barrel";
 import EventEmitter from "node:events";
 import { Socket } from "node:net";
@@ -101,24 +102,26 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         this._socket.on("close", () => {
             this._ended = true;
             this._cleanup();
+            this._socket.end();
             Log.info(`Connection { ${this.uuid} } closed`);
         });
     }
 
     private async _processPacket() {
         const size = await this._bufferedReader.readNextVarInt();
-        const data = await this._bufferedReader.waitForBytes(size);
+        let packetID = 0;
         
-        const reader = new BufferedReader(data);
-        const packetID = await reader.readNextVarInt();
-
-        this.server.monitor?.incomingPacket(this.server, size, packetID, reader.buffer);
-
-        if (packetID != 0x1b) printBuffer(reader.buffer, `[Parsed ${this._state} Packet #0x${packetID} ${size}b]: `);
-
-        let packet;
-
         try {
+            const data = await this._bufferedReader.waitForBytes(size);
+            using reader = new BufferedReader(data);
+            packetID = await reader.readNextVarInt();
+    
+            this.server.monitor?.incomingPacket(this.server, size, packetID, reader.buffer);
+    
+            if (packetID != 0x1b) printBuffer(reader.buffer, `[Parsed ${this._state} Packet #0x${packetID} ${size}b]: `);
+    
+            let packet;
+
             switch (this._state) {
                 case ConnectionState.HANDSHAKING:
                     packet = await Handshaking.decode(reader, packetID);
@@ -142,7 +145,9 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                     break;
             }
         } catch (error) {
-            if (error instanceof UnknownPacketError) {
+            if (error instanceof BufferedReaderTimeoutError) {
+                this.disconnect("Timed out");
+            } else if (error instanceof UnknownPacketError) {
                 await this.disconnect(`Unknown packet format: 0x${packetID.toString(16)}`);
             } else {
                 Log.error(error);
@@ -154,7 +159,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     }
 
     private async _handleHandshake(packet: ServerboundPacket) {
-        if (packet instanceof ServerboundHandshakePacket) {
+        if (packet instanceof ServerboundIntentionPacket) {
             this._protocolVersion = packet.protocolVersion;
 
             switch (packet.intent) {
@@ -194,20 +199,20 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 "favicon": this.server.favicon
             };
             await this.send(new ClientboundStatusResponsePacket(data));
-        } else if (packet instanceof ServerboundPingRequestPacket) {
+        } else if (packet instanceof ServerboundStatusPingRequestPacket) {
             const timestamp = BigInt(Date.now());
             await this.send(new ClientboundPongResponsePacket(timestamp));
         }
     }
 
     private async _handleLogin(packet: ServerboundPacket) {
-        if (packet instanceof ServerboundLoginStartPacket) {
+        if (packet instanceof ServerboundHelloPacket) {
             if (this.encrypted) {
                 this.disconnect("Encrypted servers are not supported yet.");
                 return;
             } else {
                 this._profile = await GameProfile.fromUsername(packet.name);
-                await this.send(new ClientboundLoginSuccessPacket(this._profile));
+                await this.send(new ClientboundLoginFinishedPacket(this._profile));
             }
         } else if (packet instanceof ServerboundLoginAcknowledgedPacket) {
             this._state = ConnectionState.CONFIGURATION;
@@ -231,24 +236,24 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             this._client.locale = packet.locale;
             this._client.chatMode = packet.chatMode;
             this._client.viewDistance = packet.viewDistance;
-        } else if (packet instanceof ServerboundPluginMessagePacket) {
-            const reader = new BufferedReader(packet.data);
+        } else if (packet instanceof ServerboundCustomPayloadPacket) {
+            using reader = new BufferedReader(packet.data);
             printBuffer(packet.data, `  Channel ${packet.channel} -> `);
 
             if (packet.channel.equals(Identifier.ofVanilla("brand"))) {
                 this._client.brand = await reader.readNextString();
             }
             this.emit("pluginmessage", packet.channel, reader);
-        } else if (packet instanceof ServerboundAcknowledgeFinishConfigurationPacket) {
+        } else if (packet instanceof ServerboundFinishConfigurationPacket) {
             this._state = ConnectionState.PLAY;
             this.emit("play");
-        } else if (packet instanceof ServerboundKeepAliveConfigurationPacket) {
+        } else if (packet instanceof ServerboundConfigurationKeepAlivePacket) {
             this._verifyKeepaliveResponse(packet);
         }
     }
 
     private async _handlePlay(packet: ServerboundPacket) {
-        if (packet instanceof ServerboundKeepAlivePlayPacket) {
+        if (packet instanceof ServerboundPlayKeepAlivePacket) {
             this._verifyKeepaliveResponse(packet);
         }
         
@@ -270,7 +275,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         switch (this._state) {
             case ConnectionState.CONFIGURATION:
             case ConnectionState.PLAY:
-                if ((packet instanceof ServerboundKeepAliveConfigurationPacket) || (packet instanceof ServerboundKeepAlivePlayPacket)) {
+                if ((packet instanceof ServerboundConfigurationKeepAlivePacket) || (packet instanceof ServerboundPlayKeepAlivePacket)) {
                     delta = Date.now() - this._lastKeepaliveCheck;
                     keepAliveID = packet.keepAliveID;
                 }
@@ -301,10 +306,10 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             
             switch (this._state) {
                 case ConnectionState.CONFIGURATION:
-                    this.send(new ClientboundKeepAliveConfigurationPacket(this._keepaliveID));
+                    this.send(new ClientboundConfigurationKeepAlivePacket(this._keepaliveID));
                     break;
                 case ConnectionState.PLAY:
-                    this.send(new ClientboundKeepAlivePlayPacket(this._keepaliveID));
+                    this.send(new ClientboundPlayKeepAlivePacket(this._keepaliveID));
                     break;
             }
         }
@@ -313,15 +318,17 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     }
 
     private async _configureClient() {
+        await this.send(ClientboundCustomPayloadPacket.brand(this.server.softwareName));
+
         await this._enableFeatures();
-        await this._updateTags();
         await this._synchronizeRegistries();
+        await this._updateTags(); 
 
         await this.send(new ClientboundFinishConfigurationPacket());
     }
 
     private async _enableFeatures() {
-        await this.send(new ClientboundFeatureFlagsPacket(this.server.featureFlags));
+        await this.send(new ClientboundUpdateEnabledFeaturesPacket(this.server.featureFlags));
     }
 
     private async _updateTags() {}
@@ -345,13 +352,13 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
         switch (this._state) {
             case ConnectionState.LOGIN:
-                await this.send(new ClientboundDisconnectLoginPacket(reason));
+                await this.send(new ClientboundLoginDisconnectPacket(reason));
                 break;
             case ConnectionState.CONFIGURATION:
-                await this.send(new ClientboundDisconnectConfigurationPacket(reason));
+                await this.send(new ClientboundConfigurationDisconnectPacket(reason));
                 break;
             case ConnectionState.PLAY:
-                await this.send(new ClientboundDisconnectPlayPacket(reason));
+                await this.send(new ClientboundPlayDisconnectPacket(reason));
                 break;
         }
         this._cleanup();
@@ -370,6 +377,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         if (!this._socket.destroyed) this._socket.end();
         this.removeAllListeners();
         this._clearAllTimeouts();
+        this._bufferedReader.close();
     }
 }
 

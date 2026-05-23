@@ -2,7 +2,7 @@ import { UnknownPacketError } from "@/Errors";
 import { BufferedReader } from "@/Network/BufferedIO";
 import { ServerboundPacket } from "@/Network/Packet";
 import {
-    ServerboundKeepAlivePlayPacket
+    ServerboundPlayKeepAlivePacket
 } from "@/Network/Packets.barrel";
 
 export default abstract class Play {
@@ -10,7 +10,7 @@ export default abstract class Play {
         switch (packetID) {
             case 0x1b: // KEEP_ALIVE
                 const keepAliveID = await reader.readNextLong();
-                return new ServerboundKeepAlivePlayPacket(keepAliveID);
+                return new ServerboundPlayKeepAlivePacket(keepAliveID);
         }
         throw new UnknownPacketError();
     }

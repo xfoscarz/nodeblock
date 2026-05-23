@@ -1,10 +1,10 @@
 import { ClientboundPacket } from "@/Network/Packet";
 
-export default class ClientboundKeepAlivePlayPacket extends ClientboundPacket {
+export default class ClientboundConfigurationKeepAlivePacket extends ClientboundPacket {
     constructor(
         public keepAliveID: bigint
     ) {
-        super(0x2b);
+        super(0x4);
     }
 
     public override write(): void {

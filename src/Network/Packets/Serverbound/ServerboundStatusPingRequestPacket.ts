@@ -1,6 +1,6 @@
 import { ServerboundPacket } from "@/Network/Packet";
 
-export default class ServerboundPingRequestPacket extends ServerboundPacket {
+export default class ServerboundStatusPingRequestPacket extends ServerboundPacket {
     constructor(
         public timestamp: bigint
     ) {

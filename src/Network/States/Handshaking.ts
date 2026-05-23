@@ -2,7 +2,7 @@ import { UnknownPacketError } from "@/Errors";
 import { BufferedReader } from "@/Network/BufferedIO";
 import { ServerboundPacket } from "@/Network/Packet";
 import {
-    ServerboundHandshakePacket
+    ServerboundIntentionPacket
 } from "@/Network/Packets.barrel";
 
 export default abstract class Handshaking {
@@ -13,7 +13,7 @@ export default abstract class Handshaking {
                 const serverAddress = await reader.readNextString();
                 const serverPort = await reader.readNextUnsignedShort();
                 const nextState = await reader.readNextVarInt();
-                return new ServerboundHandshakePacket(protocolVersion, serverAddress, serverPort, nextState);
+                return new ServerboundIntentionPacket(protocolVersion, serverAddress, serverPort, nextState);
         }
 
         throw new UnknownPacketError();

@@ -1,7 +1,7 @@
 import GameProfile from "@/Minecraft/GameProfile";
 import { ClientboundPacket } from "@/Network/Packet";
 
-export default class ClientboundLoginSuccessPacket extends ClientboundPacket {
+export default class ClientboundLoginFinishedPacket extends ClientboundPacket {
     constructor(
         public gameProfile: GameProfile
     ) {

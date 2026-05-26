@@ -4,7 +4,7 @@ import { ClientboundPacket } from "@/Network/Packet";
 import { PortWatcher } from "@/PortWatcher";
 import ServerListHandler from "@/WebPanel/WebMonitorHandlers/ServerListHandler";
 import ServerStateHandler from "@/WebPanel/WebMonitorHandlers/ServerStateHandler";
-import WebServer from "@/WebPanel/WebServer";
+import WebServer, { WebsocketServer } from "@/WebPanel/WebServer";
 import { API, UnknownAPIDataTypeError } from "@shared/API";
 
 export type ServerEntry = { server: NodeblockServer, name: string };
@@ -60,8 +60,9 @@ export class NodeblockServerGroup {
         return this._webServer;
     }
     
-    public attachDefaultWebMonitor() {
-        this.attachMonitor(new WebMonitor(this, this._webServer!));
+    public attachDefaultWebMonitor(port: number) {
+        if (this._webServer) throw new Error("A webserver has already been attached");
+        this.attachMonitor(new WebMonitor(this, this.attachWeb(port)));
         return this;
     }
 
@@ -115,13 +116,17 @@ export abstract class ServerGroupMonitor {
 export type WebMonitorRequestHandler = (req: API.Request<API.Type.ServerList>, group: NodeblockServerGroup) => API.Response<any> | null;
 
 export class WebMonitor extends ServerGroupMonitor {
+    private _websocketServer: WebsocketServer;
+
     constructor(
         container: NodeblockServerGroup,
         private _webserver: WebServer
     ) {
         super(container);
 
-        this._webserver.on("websocketopen", connection => {
+        this._websocketServer = this._webserver.useWebsocket("/");
+
+        this._websocketServer.onopen = connection => {
             connection.on("message", async message => {
                 let request: API.Request<API.Type>;
                 try {
@@ -146,7 +151,7 @@ export class WebMonitor extends ServerGroupMonitor {
             });
 
             connection.on("error", Log.error);
-        });
+        }
     }
 
     private async _handleRequest(req: API.Request<API.Type>): Promise<API.Response<API.Type> | null> {
@@ -169,7 +174,7 @@ export class WebMonitor extends ServerGroupMonitor {
         });
 
         server.on("playeradd", stateChange);
-        server.on("playerremove", stateChange);
+        server.on("playerleave", stateChange);
         server.on("statechange", stateChange);
     }
 
@@ -178,6 +183,6 @@ export class WebMonitor extends ServerGroupMonitor {
     public outgoingPacket() {}
 
     public broadcast<T extends API.Type>(type: T, data: API.Response<T>["data"], success: boolean = true) {
-        this._webserver.websocketBroadcast(JSON.stringify({ "datatype": type, data, success }));
+        this._websocketServer.broadcast(JSON.stringify({ "datatype": type, data, success }));
     }
 }

@@ -19,9 +19,9 @@ interface WebServerEvents {
 
     "route": [ HTTPRequest, Socket ];
     
-    "websocketclose": [ WebsocketConnection ];
-    "websocketopen": [ WebsocketConnection ];
-    "websocketbroadcast": [ Uint8Array | string | WebsocketResponse ];
+    "websocketclose": [ string, WebsocketConnection ];
+    "websocketopen": [ string, WebsocketConnection ];
+    "websocketbroadcast": [ string, Uint8Array | string | WebsocketResponse ];
 }
 export default class WebServer extends EventEmitter<WebServerEvents> {
     public readonly server: net.Server;
@@ -124,7 +124,7 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         return new Promise(res => this.server.close(() => res()));
     }
 
-    public useWebsocket(route: string): this {
+    public useWebsocket(route: string): WebsocketServer {
         this.use(route, (req, res, next) => {
             const { connection, upgrade, "sec-websocket-key": websocketKey } = req.headers;
 
@@ -137,7 +137,7 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
                 const upgradeOptions = upgrade.split(",").map(s => s.trim());
     
                 if (upgradeOptions.includes("websocket")) {
-                    res.upgrade(WS(websocketKey));
+                    res.upgrade(WS(route, websocketKey));
                 } else {
                     res.status = 400;
                     res.send().close();
@@ -147,16 +147,28 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
             }
         });
 
-        return this;
+        return new WebsocketServer(route, this);
     }
 
-    public websocketBroadcast(payload: Uint8Array | string | WebsocketResponse) {
-        this.emit("websocketbroadcast", payload);
+    public websocketBroadcast(route: string, payload: Uint8Array | string | WebsocketResponse) {
+        this.emit("websocketbroadcast", route, payload);
+    }
+}
+
+export class WebsocketServer {
+    public onopen: (connection: WebsocketConnection) => void = () => {};
+    public onclose: (connection: WebsocketConnection) => void = () => {};
+
+    constructor(
+        public readonly route: string,
+        public readonly webserver: WebServer
+    ) {
+        this.webserver.on("websocketopen", (route, connection) => route == this.route ? this.onopen(connection) : "");
+        this.webserver.on("websocketclose", (route, connection) => route == this.route ? this.onclose(connection) : "");
     }
 
-    public useDefaultWebPanel(): this {
-        this.useWebsocket("/");
-        return this;
+    public broadcast(payload: Uint8Array | string | WebsocketResponse) {
+        this.webserver.websocketBroadcast(this.route, payload);
     }
 }
 

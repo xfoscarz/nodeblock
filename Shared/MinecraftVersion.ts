@@ -1,3 +1,4 @@
+import { memoize } from "@shared/Memoize";
 import type { EnumString } from "@shared/Util";
 
 export const Versions = Object.freeze({
@@ -748,7 +749,7 @@ export function isCleanVersionsString(versionString: string): boolean {
     return cleanVersionStringMatcher.test(versionString);
 }
 
-export function protocolToVersionRange(protocol: number): [ string, string ] | string | null {
+export const protocolToVersionRange: (protocol: number) => [ string, string ] | string | null = memoize(protocol => {
     const pair: [ string, string ] = [ "", "" ];
     for (const version in Versions) {
         if (pair[1]) {
@@ -763,6 +764,6 @@ export function protocolToVersionRange(protocol: number): [ string, string ] | s
         }
     }
     return null;
-}
+});
 
 export const LATEST_VERSION = Object.values(Versions)[0];

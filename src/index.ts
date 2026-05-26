@@ -1,8 +1,7 @@
 import { LegacyText } from "@/Minecraft/Text";
-import { corePackFor, ServerState } from "@/Network/NodeblockServer";
+import { corePackFor } from "@/Network/NodeblockServer";
 import { NodeblockServerGroup } from "@/Nodeblock";
 import { Versions } from "@shared/MinecraftVersion";
-import { wait } from "@shared/Util";
 
 const container = new NodeblockServerGroup([{
     name: "main",
@@ -14,6 +13,9 @@ const container = new NodeblockServerGroup([{
     },
     packs: [ corePackFor("1.21.11") ]
 }]);
+
+container.attachDefaultWebMonitor(3000);
+
 
 // container.addAndStart({
 //     name: "second server",

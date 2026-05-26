@@ -13,6 +13,7 @@
         "path": "./Web/dist"
     }],
     "settings": {
-        "liveServer.settings.multiRootWorkspaceName": "Static"
+        "liveServer.settings.multiRootWorkspaceName": "Static",
+        "discord.enabled": true
     },
 }

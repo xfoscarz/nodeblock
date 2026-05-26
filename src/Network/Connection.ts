@@ -1,9 +1,8 @@
-import { Log, printBuffer, printBytes } from "@/Debug";
+import { Log, printBuffer } from "@/Debug";
 import { UnknownPacketError } from "@/Errors";
 import GameProfile from "@/Minecraft/GameProfile";
 import { Identifier } from "@/Minecraft/Identifier";
 import { Player } from "@/Minecraft/Player";
-import { TeleportFlag } from "@/Minecraft/TeleportFlags";
 import { BufferedReader, BufferedReaderTimeoutError } from "@/Network/BufferedIO";
 import Client from "@/Network/Client";
 import { NodeblockServer, ServerMode } from "@/Network/NodeblockServer";
@@ -11,30 +10,32 @@ import { ClientboundPacket, ServerboundPacket } from "@/Network/Packet";
 import {
     ClientboundConfigurationDisconnectPacket,
     ClientboundConfigurationKeepAlivePacket,
+    ClientboundCustomPayloadPacket,
     ClientboundFinishConfigurationPacket,
     ClientboundLoginDisconnectPacket,
     ClientboundLoginFinishedPacket,
+    ClientboundLoginPacket,
     ClientboundPlayDisconnectPacket,
+    ClientboundPlayerInfoUpdatePacket,
     ClientboundPlayKeepAlivePacket,
     ClientboundPongResponsePacket,
-    ClientboundUpdateEnabledFeaturesPacket,
-    ServerboundClientInformationPacket,
-    ServerboundCustomPayloadPacket,
-    ServerboundFinishConfigurationPacket,
-    ServerboundIntentionPacket,
-    ServerboundHelloPacket,
-    ServerboundConfigurationKeepAlivePacket,
-    ServerboundPlayKeepAlivePacket,
-    ServerboundLoginAcknowledgedPacket,
-    ServerboundStatusPingRequestPacket,
-    ServerboundStatusRequestPacket,
-    ClientboundCustomPayloadPacket,
-    ClientboundLoginPacket,
     ClientboundSelectKnownPacksPacket,
     ClientboundStatusResponsePacket,
+    ClientboundUpdateEnabledFeaturesPacket,
+    ClientboundUpdateTagsPacket,
+    ServerboundClientInformationPacket,
+    ServerboundConfigurationKeepAlivePacket,
+    ServerboundCustomPayloadPacket,
+    ServerboundFinishConfigurationPacket,
+    ServerboundHelloPacket,
+    ServerboundIntentionPacket,
+    ServerboundLoginAcknowledgedPacket,
+    ServerboundPlayKeepAlivePacket,
     ServerboundSelectKnownPacksPacket,
-    ClientboundUpdateTagsPacket
+    ServerboundStatusPingRequestPacket,
+    ServerboundStatusRequestPacket
 } from "@/Network/Packets.barrel";
+import { PlayerAction } from "@/Network/Packets/Clientbound/ClientboundPlayerInfoUpdatePacket";
 import ClientboundPlayerPositionPacket from "@/Network/Packets/Clientbound/ClientboundPlayerPositionPacket";
 import ClientboundRegistryDataPacket, { REQUIRED_REGISTRIES } from "@/Network/Packets/Clientbound/ClientboundRegistryDataPacket";
 import { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
@@ -58,7 +59,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     public static readonly KEEP_ALIVE_THRESHOLD = 15 * 1000;
 
     public readonly encrypted: boolean;
-    public readonly uuid: string;
+    public readonly id: string;
 
     private _client: Client = new Client();
     private _player!: Player;
@@ -80,10 +81,10 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     ) {
         super();
 
-        this.uuid = v4();
+        this.id = v4();
         this.encrypted = server.mode != ServerMode.OFFLINE;
 
-        Log.info(`New connection { ${this.uuid} }`);
+        Log.info(`New connection { ${this.id} }`);
 
         this._initializeHandlers();
     }
@@ -112,7 +113,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             this._ended = true;
             this._cleanup();
             this._socket.end();
-            Log.info(`Connection { ${this.uuid} } closed ${hasError ? "with errors" : ""}`);
+            this.server.emit("playerleave");
+            Log.info(`Connection { ${this.id} } closed ${hasError ? "with errors" : ""}`);
         });
     }
 
@@ -223,7 +225,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 this.disconnect("Encrypted servers are not supported yet.");
                 return;
             } else {
-                this._player = new Player(await GameProfile.fromUsername(packet.name));
+                this._player = new Player(this, await GameProfile.fromUsername(packet.name));
                 await this.send(new ClientboundLoginFinishedPacket(this._player.profile));
             }
         } else if (packet instanceof ServerboundLoginAcknowledgedPacket) {
@@ -341,7 +343,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
     private async _initializeClientPlay() {
         Log.info("Initialize login here", this._player.id);
-        const p = new ClientboundLoginPacket(
+        this.server.emit("playeradd");
+        await this.send(new ClientboundLoginPacket(
             this._player.id,
             false,
             [ Identifier.ofVanilla("overworld") ],
@@ -354,9 +357,19 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
             false, null, null,
             0, 0,
             false
-        );
-        await this.send(p);
+        ));
         await this.send(new ClientboundPlayerPositionPacket(2, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+        await this.send(new ClientboundPlayerInfoUpdatePacket([ PlayerAction.ADD_PLAYER ])); // all players
+        const p = new ClientboundPlayerInfoUpdatePacket([ PlayerAction.ADD_PLAYER ])
+            .add(this.player.uuid, { addPlayer: {
+                "name": this.player.profile.username,
+                "properties": {
+                    "textures": { "value": this.player.profile.getBase64Data() }
+                }
+            }});
+        printBuffer(p.payload);
+        // await this.send(p
+        // );
     }
 
     private async _enableFeatures() {
@@ -403,11 +416,12 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         Object.values(this._timeouts).forEach(clearTimeout);
     }
 
+    public get player() { return this._player; }
     public get profile() { return this._player.profile; }
     public get ended() { return this._ended; }
     public get transfered() { return this._transfered; }
     public get authenticated() { return !!this._player; }
-    public get isPlay() { return this._state == ConnectionState.PLAY; }
+    public get isPlay() { return !this._ended && this._state == ConnectionState.PLAY; }
 
     private _cleanup() {
         if (!this._socket.destroyed) this._socket.end();

@@ -99,15 +99,16 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
     }
 
     private _cleanupConnections() {
-        const length = this.connections.size;
+        let difference = 0;
         for (const connection of this.connections) {
             if (connection.ended) {
+                difference++;
                 this.connections.delete(connection);
             }
         }
-        const difference = length - this.connections.size;
 
         if (difference > 0) {
+            this.emit("playerleave");
             Log.info(`Cleaned up ${difference} stale connections.`);
         }
     }
@@ -205,6 +206,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
     public get motd() { return this.rawMotd.centered ? LegacyText.centerMOTD(this.rawMotd.text) : this.rawMotd.text }
     public get state() { return this._state; }
     public get playConnections() { return this.connections.values().filter(connection => connection.isPlay).toArray(); }
+    public get players() { return this.playConnections.map(c => c.player); }
     public get playerCount() { return this.playConnections.length; }
 }
 

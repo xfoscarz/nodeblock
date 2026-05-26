@@ -12,12 +12,12 @@ export const generateAccept = (key: string) => {
     return hash("sha1", key + MAGIC_STRING, { "outputEncoding": "base64" });
 }
 
-const factory: (websocketKey: string) => WebConnectionHandler = (websocketKey) => {
+const factory: (route: string, websocketKey: string) => WebConnectionHandler = (route, websocketKey) => {
     const handler: WebConnectionHandler = (server, socket) => {
         const handshakeResponse = buildHandshakeResponse(websocketKey);
-        const connection: WebsocketConnection = new Connection(server, socket);
+        const connection: WebsocketConnection = new Connection(route, server, socket);
         socket.write(handshakeResponse.payload);
-        server.emit("websocketopen", connection);
+        server.emit("websocketopen", route, connection);
 
         const builder = new WebsocketFrameBuilder(payload => {
             connection.emit("message", payload);
@@ -70,9 +70,10 @@ type ConnectionEvents = {
 class Connection extends EventEmitter<ConnectionEvents> {
     private _closed: boolean = false;
     private _closeHandler = () => this.close(1000, "Server closed");
-    private _broadcastHandler = (payload: Uint8Array | string | WebsocketResponse) => this.send(payload);
+    private _broadcastHandler = (route: string, payload: Uint8Array | string | WebsocketResponse) => route === this.route ? this.send(payload) : "";
 
     constructor(
+        public readonly route: string,
         public readonly server: WebServer,
         public readonly socket: Socket
     ) {
@@ -96,7 +97,7 @@ class Connection extends EventEmitter<ConnectionEvents> {
     }
 
     public broadcast(payload: string | Uint8Array | WebsocketResponse) {
-        this.server.websocketBroadcast(payload);
+        this.server.websocketBroadcast(this.route, payload);
     }
 
     public async ping(timeout: number = 10_000): Promise<number> {
@@ -132,7 +133,7 @@ class Connection extends EventEmitter<ConnectionEvents> {
         if (this._closed) return;
         this._closed = true;
         this.socket.end(WebsocketResponse.close(code, message).payload);
-        this.server.emit("websocketclose", this);
+        this.server.emit("websocketclose", this.route, this);
         this.server.off("stop", this._closeHandler);
         this.server.off("websocketbroadcast", this._broadcastHandler);
         this.removeAllListeners();

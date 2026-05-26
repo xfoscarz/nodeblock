@@ -1,9 +1,10 @@
 import { Log } from "@/Debug";
 import UUID from "@/Minecraft/UUID";
+import { memoize } from "@shared/Memoize";
 import https from "node:https";
 
 export namespace MojangAPI {
-    export async function getUUID(username: string): Promise<UUID | null> {
+    export const getUUID: (username: string) => Promise<UUID | null> = memoize(username => {
         const REQUEST_URL = "https://api.mojang.com/users/profiles/minecraft/";
 
         let buffer = "";
@@ -28,7 +29,7 @@ export namespace MojangAPI {
                 });
             });
         });
-    }
+    });
 
     export type Texture = {
         timestamp: number;
@@ -40,7 +41,7 @@ export namespace MojangAPI {
             CAPE?: { url: string; }
         }
     };
-    export async function getSkin(uuid: UUID): Promise<{
+    export const getSkin: (uuid: UUID) => Promise<{
         id: string;
         name: string;
         legacy?: boolean;
@@ -49,7 +50,7 @@ export namespace MojangAPI {
             signature?: string;
             value: Texture;
         }[]
-    } | null> {
+    } | null> = memoize(uuid => {
         const REQUEST_URL = "https://sessionserver.mojang.com/session/minecraft/profile/";
 
         let buffer = "";
@@ -78,5 +79,5 @@ export namespace MojangAPI {
                 });
             });
         });
-    }
+    });
 }

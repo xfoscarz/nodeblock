@@ -10,7 +10,7 @@ export default class ClientboundConfigurationDisconnectPacket extends Clientboun
 
     public override write(): void {
         const data = NBT.compound({
-            "text": NBT.string("red"),
+            "text": NBT.string(this.reason),
             "color": NBT.string("red")
         });
         this.writeNBT(data);

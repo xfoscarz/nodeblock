@@ -5,11 +5,24 @@ import UUID from "@/Minecraft/UUID";
 import Connection from "@/Network/Connection";
 import { ClientboundPacket } from "@/Network/Packet";
 import { ServerGroupMonitor } from "@/Nodeblock";
+import { MinecraftVersionStrings } from "@shared/MinecraftVersion";
 import { isErrorCode, wait } from "@shared/Util";
 import { EventEmitter } from "events";
 import fs from "fs";
 import net from "node:net";
 import path from "path";
+
+export type PackDefinition = {
+    namespace: string;
+    id: string;
+    version: string;
+}
+
+export function corePackFor(version: MinecraftVersionStrings): PackDefinition {
+    return {
+        namespace: "minecraft", id: "core", version
+    }
+}
 
 export type ServerOptions = {
     port?: number;
@@ -19,6 +32,7 @@ export type ServerOptions = {
     maxPlayers?: number;
     motd?: string | { centered: boolean, text: string };
     featureFlags?: Identifier[];
+    packs: PackDefinition[] // TODO
 };
 
 export enum ServerMode {
@@ -49,6 +63,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
     public readonly port: number;
     public readonly mode: ServerMode;
     public readonly minecraftVersions: number[];
+    public readonly packs: PackDefinition[] = [];
     private readonly _configurationFolder: ConfigurationFolder;
 
     public connections: Set<Connection> = new Set();
@@ -70,6 +85,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
         this.port = options.port || 25565;
         this.minecraftVersions = options.minecraftVersions;
         this.mode = options.mode || ServerMode.OFFLINE;
+        this.packs = options.packs;
         this._configurationFolder = new ConfigurationFolder(folder);
         
         this.rawMotd = ((typeof options.motd == "string") ? { centered: false, text: options.motd } : options.motd) || { centered: false, text: LegacyText.transform("&fA &9node&bblock&f server") };

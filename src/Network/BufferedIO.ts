@@ -240,14 +240,50 @@ export class BufferedWriter {
 
     public writeBytes(bytes: Uint8Array) {
         this._buffers.push(bytes);
+        return this;
     }
 
     public writeBoolean(value: boolean) {
         this._buffers.push(Uint8Array.of(value ? 1 : 0));
+        return this;
     }
 
     public writeByte(value: number) {
-        this._buffers.push(Uint8Array.of(value & 0b1111_1111));
+        this._buffers.push(Uint8Array.of(value & 0x7f));
+        return this;
+    }
+
+    public writeUnsignedByte(value: number) {
+        this._buffers.push(Uint8Array.of(value & 0xff));
+        return this;
+    }
+    
+    public writeShort(value: number) {
+        const buf = Buffer.alloc(2);
+        buf.writeInt16BE(value);
+        this._buffers.push(buf);
+        return this;
+    }
+
+    public writeUnsignedShort(value: number) {
+        const buf = Buffer.alloc(2);
+        buf.writeUint16BE(value);
+        this._buffers.push(buf);
+        return this;
+    }
+
+    public writeInt(value: number) {
+        const buf = Buffer.alloc(4);
+        buf.writeInt32BE(value);
+        this._buffers.push(buf);
+        return this;
+    }
+
+    public writeTeleportFlags(flags: number) {
+        const buf = Buffer.alloc(4);
+        buf.writeUint32BE(flags);
+        this._buffers.push(buf);
+        return this;
     }
 
     public writeLong(value: bigint | number) {
@@ -258,22 +294,54 @@ export class BufferedWriter {
         const buffer = Buffer.alloc(8);
         buffer.writeBigInt64BE(value);
         this._buffers.push(buffer);
+        return this;
     }
 
-    public writeString(value: string): this {
-        const buffer = Buffer.from(value, "utf8");
-        this._writeVarInt(buffer.length);
+    public writeFloat(value: number) {
+        const buffer = Buffer.alloc(4);
+        buffer.writeFloatBE(value);
         this._buffers.push(buffer);
         return this;
     }
 
-    public writeIdentifier(identifier: Identifier): this {
+    public writeDouble(value: number) {
+        const buffer = Buffer.alloc(8);
+        buffer.writeDoubleBE(value);
+        this._buffers.push(buffer);
+        return this;
+    }
+
+    public writeString(value: string): this {
+        const buffer = Buffer.from(value, "utf8");
+        this.writeVarInt(buffer.length);
+        this._buffers.push(buffer);
+        return this;
+    }
+
+    public writePosition(_: null) {
+        return this;
+    } // TODO;
+
+    public writeIdentifier(vanillaName: string): this;
+    public writeIdentifier(identifier: Identifier): this;
+    public writeIdentifier(identifierOrVanillaName: Identifier | string): this {
+        const identifier = (typeof identifierOrVanillaName == "string") ? Identifier.ofVanilla(identifierOrVanillaName) : identifierOrVanillaName;
         this.writeString(identifier.valueOf());
         return this;
     }
 
     public writeVarInt(value: number): this {
-        this._writeVarInt(value);
+        if (value == 0) {
+            this._buffers.push(Uint8Array.of(0b0));
+        } else {
+            const buffer: number[] = [];
+            while (value != 0) {
+                buffer.push((value & 0b111_1111) | 0b1000_0000);
+                value >>= 7;
+            }
+            buffer[buffer.length - 1] = buffer[buffer.length - 1] & 0b0111_1111
+            this._buffers.push(new Uint8Array(buffer));
+        }
         return this;
     }
 
@@ -290,15 +358,17 @@ export class BufferedWriter {
     public writePrefixedOptional(present: boolean, writer: () => void = () => {}) {
         this.writeBoolean(present);
         if (present) {
-            writer.call(null);
+            writer();
         }
+        return this;
     }
 
     public writePrefixedArray(length: number, itemWriter: (index: number) => void = () => {}) {
         this.writeVarInt(length);
         for (let i = 0; i < length; i++) {
-            itemWriter.call(null, i);
+            itemWriter(i);
         }
+        return this;
     }
 
     public writeGameProfile(profile: GameProfile): this {
@@ -310,20 +380,6 @@ export class BufferedWriter {
             this.writePrefixedOptional(false);
         });
         return this;
-    }
-
-    protected _writeVarInt(value: number) {
-        if (value == 0) {
-            this._buffers.push(Uint8Array.of(0b0));
-        } else {
-            const buffer: number[] = [];
-            while (value != 0) {
-                buffer.push((value & 0b111_1111) | 0b1000_0000);
-                value >>= 7;
-            }
-            buffer[buffer.length - 1] = buffer[buffer.length - 1] & 0b0111_1111
-            this._buffers.push(new Uint8Array(buffer));
-        }
     }
 
     public get buffer() {

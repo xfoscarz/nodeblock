@@ -1,7 +1,9 @@
-import { Log, printBuffer } from "@/Debug";
+import { Log, printBuffer, printBytes } from "@/Debug";
 import { UnknownPacketError } from "@/Errors";
 import GameProfile from "@/Minecraft/GameProfile";
 import { Identifier } from "@/Minecraft/Identifier";
+import { Player } from "@/Minecraft/Player";
+import { TeleportFlag } from "@/Minecraft/TeleportFlags";
 import { BufferedReader, BufferedReaderTimeoutError } from "@/Network/BufferedIO";
 import Client from "@/Network/Client";
 import { NodeblockServer, ServerMode } from "@/Network/NodeblockServer";
@@ -26,9 +28,16 @@ import {
     ServerboundLoginAcknowledgedPacket,
     ServerboundStatusPingRequestPacket,
     ServerboundStatusRequestPacket,
-    ClientboundCustomPayloadPacket
+    ClientboundCustomPayloadPacket,
+    ClientboundLoginPacket,
+    ClientboundSelectKnownPacksPacket,
+    ClientboundStatusResponsePacket,
+    ServerboundSelectKnownPacksPacket,
+    ClientboundUpdateTagsPacket
 } from "@/Network/Packets.barrel";
-import ClientboundStatusResponsePacket, { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
+import ClientboundPlayerPositionPacket from "@/Network/Packets/Clientbound/ClientboundPlayerPositionPacket";
+import ClientboundRegistryDataPacket, { REQUIRED_REGISTRIES } from "@/Network/Packets/Clientbound/ClientboundRegistryDataPacket";
+import { StatusResponseData } from "@/Network/Packets/Clientbound/ClientboundStatusResponsePacket";
 import { HandshakeIntent } from "@/Network/Packets/Serverbound/ServerboundIntentionPacket";
 import { Configuration, Handshaking, Login, Play, Status } from "@/Network/States.barrel";
 import EventEmitter from "node:events";
@@ -52,7 +61,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
     public readonly uuid: string;
 
     private _client: Client = new Client();
-    private _profile!: GameProfile;
+    private _player!: Player;
 
     private _protocolVersion: number = -1;
     private _transfered: boolean = false;
@@ -99,26 +108,29 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
 
         this._socket.on("error", error => Log.error(error));
 
-        this._socket.on("close", () => {
+        this._socket.on("close", hasError => {
             this._ended = true;
             this._cleanup();
             this._socket.end();
-            Log.info(`Connection { ${this.uuid} } closed`);
+            Log.info(`Connection { ${this.uuid} } closed ${hasError ? "with errors" : ""}`);
         });
     }
 
     private async _processPacket() {
-        const size = await this._bufferedReader.readNextVarInt();
+        if (this._ended) return;
+
+        let size = await this._bufferedReader.readNextVarInt();
         let packetID = 0;
         
         try {
             const data = await this._bufferedReader.waitForBytes(size);
+            size -= 1;
             using reader = new BufferedReader(data);
             packetID = await reader.readNextVarInt();
     
             this.server.monitor?.incomingPacket(this.server, size, packetID, reader.buffer);
     
-            if (packetID != 0x1b) printBuffer(reader.buffer, `[Parsed ${this._state} Packet #0x${packetID} ${size}b]: `);
+            if ((this._state != ConnectionState.PLAY) || ((packetID != 0xc) && (packetID != 0x1b))) printBuffer(reader.buffer, `[Parsed ${this._state} Packet #0x${packetID.toString(16)} ${size}b]: `);
     
             let packet;
 
@@ -211,8 +223,8 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 this.disconnect("Encrypted servers are not supported yet.");
                 return;
             } else {
-                this._profile = await GameProfile.fromUsername(packet.name);
-                await this.send(new ClientboundLoginFinishedPacket(this._profile));
+                this._player = new Player(await GameProfile.fromUsername(packet.name));
+                await this.send(new ClientboundLoginFinishedPacket(this._player.profile));
             }
         } else if (packet instanceof ServerboundLoginAcknowledgedPacket) {
             this._state = ConnectionState.CONFIGURATION;
@@ -223,16 +235,19 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
                 return;
             }
 
-            this._initializeEventListeners();
-
             this._timeouts["keep-alive"] = setTimeout(() => this._sendKeepalive(), 5 * 1000);
 
-            await this._configureClient();
+            await this.send(ClientboundCustomPayloadPacket.brand(this.server.softwareName));
+            await this._enableFeatures();
+            await this.send(new ClientboundSelectKnownPacksPacket(this.server.packs));
         }
     }
 
     private async _handleConfiguration(packet: ServerboundPacket) {
-        if (packet instanceof ServerboundClientInformationPacket) {
+        if (packet instanceof ServerboundSelectKnownPacksPacket) {
+            Log.info("Client Known Packs:", packet.packs);
+            await this._configureClientPacks();
+        } else if (packet instanceof ServerboundClientInformationPacket) {
             this._client.locale = packet.locale;
             this._client.chatMode = packet.chatMode;
             this._client.viewDistance = packet.viewDistance;
@@ -247,6 +262,7 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         } else if (packet instanceof ServerboundFinishConfigurationPacket) {
             this._state = ConnectionState.PLAY;
             this.emit("play");
+            await this._initializeClientPlay();
         } else if (packet instanceof ServerboundConfigurationKeepAlivePacket) {
             this._verifyKeepaliveResponse(packet);
         }
@@ -317,26 +333,45 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         this._timeouts["keep-alive"].refresh();
     }
 
-    private async _configureClient() {
-        await this.send(ClientboundCustomPayloadPacket.brand(this.server.softwareName));
-
-        await this._enableFeatures();
+    private async _configureClientPacks() {
         await this._synchronizeRegistries();
         await this._updateTags(); 
-
         await this.send(new ClientboundFinishConfigurationPacket());
+    }
+
+    private async _initializeClientPlay() {
+        Log.info("Initialize login here", this._player.id);
+        const p = new ClientboundLoginPacket(
+            this._player.id,
+            false,
+            [ Identifier.ofVanilla("overworld") ],
+            this.server.maxPlayers,
+            8, 8,
+            false, true, false,
+            0, Identifier.ofVanilla("overworld"),
+            0, 0, 0,
+            false, true,
+            false, null, null,
+            0, 0,
+            false
+        );
+        await this.send(p);
+        await this.send(new ClientboundPlayerPositionPacket(2, 0, 0, 0, 0, 0, 0, 0, 0, 0));
     }
 
     private async _enableFeatures() {
         await this.send(new ClientboundUpdateEnabledFeaturesPacket(this.server.featureFlags));
     }
 
-    private async _updateTags() {}
+    private async _updateTags() {
+        await this.send(new ClientboundUpdateTagsPacket());
+    }
 
-    private async _synchronizeRegistries() {}
-
-
-    private _initializeEventListeners() {
+    private async _synchronizeRegistries() {
+        for (const registry in REQUIRED_REGISTRIES) {
+            const contents = REQUIRED_REGISTRIES[registry];
+            await this.send(new ClientboundRegistryDataPacket(registry, contents));
+        }
     }
 
     public async send(packet: ClientboundPacket): Promise<void> {
@@ -368,9 +403,10 @@ export default class Connection extends EventEmitter<ConnectionEvents> {
         Object.values(this._timeouts).forEach(clearTimeout);
     }
 
+    public get profile() { return this._player.profile; }
     public get ended() { return this._ended; }
     public get transfered() { return this._transfered; }
-    public get authenticated() { return !!this._profile; }
+    public get authenticated() { return !!this._player; }
     public get isPlay() { return this._state == ConnectionState.PLAY; }
 
     private _cleanup() {

@@ -4,9 +4,11 @@ import {
     ServerboundCustomPayloadPacket,
     ServerboundFinishConfigurationPacket,
     ServerboundConfigurationKeepAlivePacket,
+    ServerboundSelectKnownPacksPacket,
 } from "@/Network/Packets.barrel";
 import { ServerboundPacket } from "@/Network/Packet";
 import { UnknownPacketError } from "@/Errors";
+import { PackDefinition } from "@/Network/NodeblockServer";
 
 export default abstract class Configuration {
     public static async decode(reader: BufferedReader, packetID: number): Promise<ServerboundPacket> {
@@ -41,6 +43,13 @@ export default abstract class Configuration {
             case 0x4: // SERVERBOUND_KEEP_ALIVE
                 const keepAliveID = await reader.readNextLong();
                 return new ServerboundConfigurationKeepAlivePacket(keepAliveID);
+            case 0x7:
+                const length = await reader.readNextVarInt();
+                const packs: PackDefinition[] = [];
+                for (let i = 0;i < length;i++) {
+                    packs.push({ namespace: await reader.readNextString(), id: await reader.readNextString(), version: await reader.readNextString() });
+                }
+                return new ServerboundSelectKnownPacksPacket(packs);
         }
         throw new UnknownPacketError();
     }

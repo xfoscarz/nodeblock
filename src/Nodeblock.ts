@@ -6,6 +6,7 @@ import ServerListHandler from "@/WebPanel/WebMonitorHandlers/ServerListHandler";
 import ServerStateHandler from "@/WebPanel/WebMonitorHandlers/ServerStateHandler";
 import WebServer, { WebsocketServer } from "@/WebPanel/WebServer";
 import { API, UnknownAPIDataTypeError } from "@shared/API";
+import { Server } from "node:net";
 
 export type ServerEntry = { server: NodeblockServer, name: string };
 type ContainerizedServerOptions = ServerOptions & { name: string, port: number, folderName?: string };
@@ -35,7 +36,13 @@ export class NodeblockServerGroup {
                     await this._webServer.stop();
                 }
 
-                process.exit(0);
+                // TODO netserverprovider keeps track of all opened servers + ports, we can use this to track if all servers are closed
+                const improperShutdown = false;
+                if (improperShutdown) {
+                    Log.info("Improper shutdown detected!");
+                } else {
+                    Log.info("Bye!");
+                }
             });
         }
     }

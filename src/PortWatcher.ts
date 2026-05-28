@@ -1,3 +1,4 @@
+import { serverPortListener } from "@/NetServerProvider";
 import net, { Server } from "node:net";
 
 export class PortWatcher {
@@ -9,7 +10,7 @@ export class PortWatcher {
         const server = new net.Server();
         return new Promise(res => {
             server.on("error", () => res(false));
-            server.listen(this.port, () => server.close(() => res(true)));
+            serverPortListener(server, this.port, () => server.close(() => res(true)));
         });
     }
 

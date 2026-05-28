@@ -17,7 +17,7 @@ const handler: WebConnectionHandler = (server, socket) => {
 
     socket.on("error", (err) => {
         Log.error(err);
-        socket.destroy();
+        socket.end();
     });
 
     socket.on("timeout", () => {

@@ -7,6 +7,7 @@ import { EventEmitter } from "node:stream";
 import HTTP, { HTTPRequest, HTTPResponse } from "@/WebPanel/HTTP";
 import WS, { WebsocketConnection, WebsocketResponse } from "@/WebPanel/WS";
 import { Log } from "@/Debug";
+import { serverPortListener, waitForServerClose } from "@/NetServerProvider";
 
 
 type WebServerOptions = {}
@@ -26,15 +27,21 @@ interface WebServerEvents {
 export default class WebServer extends EventEmitter<WebServerEvents> {
     public readonly server: net.Server;
 
+    private _sockets: Set<Socket> = new Set();
     private _handlers: { route: string, handler: RouteHandler }[] = [];
     private _started: boolean = false;
+
+    private _socketGC: NodeJS.Timeout;
 
     constructor({}: WebServerOptions = {}) {
         super();
 
         this.server = new net.Server();
 
-        this.server.on("connection", socket => HTTP(this, socket));
+        this.server.on("connection", socket => {
+            this._sockets.add(socket);
+            HTTP(this, socket);
+        });
         this.server.on("error", (err) => Log.error(err));
 
         this.on("route", (request, socket) => {
@@ -82,6 +89,57 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
                 next();
             }
         });
+
+        this._socketGC = setInterval(() => this._cleanupSockets(), 1000);
+    }
+
+    private async _endOrDestroy(socket: Socket, timeout = 1000): Promise<void> {
+        if (socket.destroyed || socket.closed) return;
+
+        return new Promise(res => {
+            let finished = false;
+
+            const done = () => {
+                if (finished) return;
+                finished = true;
+                clearTimeout(timer);
+                res();
+            };
+
+            const timer = setTimeout(() => {
+                if (!socket.destroyed && !socket.closed) {
+                    socket.destroy();
+                }
+                done();
+            }, timeout);
+
+            socket.end();
+            socket.once("close", () => done());
+        });
+    }
+
+    private async _cleanupSockets() {
+        const zombiedSockets: Socket[] = [];
+
+        for (const socket of this._sockets) {
+            if (socket.destroyed || socket.closed) {
+                zombiedSockets.push(socket);
+            }
+        }
+
+        for (const socket of zombiedSockets) {
+            this._sockets.delete(socket);
+        }
+
+        if (zombiedSockets.length !== 0) {
+            Log.info(
+                "Cleaning up",
+                zombiedSockets.length,
+                "sockets.",
+                this._sockets.size,
+                "active."
+            );
+        }
     }
 
     private _createEntry(routeOrHandler?: string | RouteHandler, handler?: RouteHandler) {
@@ -110,18 +168,22 @@ export default class WebServer extends EventEmitter<WebServerEvents> {
         return this;
     }
 
-    public start(port: number) {
+    public async start(port: number) {
         if (this._started) return;
         this._started = true;
 
-        this.server.listen(port, () => {
+        return serverPortListener(this.server, port, () => {
             Log.info(`Web server started on http://localhost:${port}`);
         });
     }
 
     public async stop(): Promise<void> {
         this.emit("stop");
-        return new Promise(res => this.server.close(() => res()));
+        clearInterval(this._socketGC);
+
+        await Promise.all(this._sockets.values().map(socket => this._endOrDestroy(socket)));
+        await this._cleanupSockets();
+        await waitForServerClose(this.server);
     }
 
     public useWebsocket(route: string): WebsocketServer {
@@ -165,6 +227,10 @@ export class WebsocketServer {
     ) {
         this.webserver.on("websocketopen", (route, connection) => route == this.route ? this.onopen(connection) : "");
         this.webserver.on("websocketclose", (route, connection) => route == this.route ? this.onclose(connection) : "");
+        
+        this.webserver.on("stop", () => {
+            this.broadcast(WebsocketResponse.close(1000, "Server closed"));
+        });
     }
 
     public broadcast(payload: Uint8Array | string | WebsocketResponse) {

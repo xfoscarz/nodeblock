@@ -2,6 +2,7 @@ import { Log } from "@/Debug";
 import { Identifier } from "@/Minecraft/Identifier";
 import { LegacyText } from "@/Minecraft/Text";
 import UUID from "@/Minecraft/UUID";
+import { serverPortListener, waitForServerClose } from "@/NetServerProvider";
 import Connection from "@/Network/Connection";
 import { ClientboundPacket } from "@/Network/Packet";
 import { ServerGroupMonitor } from "@/Nodeblock";
@@ -136,6 +137,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
             this.server.close();
             Log.error(error);
         }
+        await waitForServerClose(this.server);
         this._setState(ServerState.OFFLINE);
         Log.info(`Stopped minecraft server on ${this.port}`);
     }
@@ -176,7 +178,7 @@ export class NodeblockServer extends EventEmitter<NodeblockServerEvents> {
     }
 
     protected async _initialize() {
-        await new Promise<void>(res => this.server.listen(this.port, () => res()));
+        await serverPortListener(this.server, this.port);
         
         Log.info(`Minecraft server started on ${this.port}`);
         
